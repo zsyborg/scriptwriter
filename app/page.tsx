@@ -178,11 +178,11 @@ export default function Home() {
             <button className="primary-button create-main" onClick={() => setShowCreate(true)}><Plus size={18} /> New project</button>
           </div>
 
-          <div className="stats-grid">
+          {/* <div className="stats-grid">
             <div className="stat-card"><div className="stat-icon purple"><LibraryBig size={19} /></div><div><span className="stat-label">STORIES IN PROGRESS</span><strong>{projects.length.toString().padStart(2, "0")}</strong></div><span className="stat-foot">your worlds</span></div>
             <div className="stat-card"><div className="stat-icon orange"><UsersRound size={19} /></div><div><span className="stat-label">CHARACTERS</span><strong>12</strong></div><span className="stat-foot">personalities</span></div>
             <div className="stat-card"><div className="stat-icon green"><MapPin size={19} /></div><div><span className="stat-label">LOCATIONS</span><strong>08</strong></div><span className="stat-foot">places to go</span></div>
-          </div>
+          </div> */}
 
           <div className="section-heading">
             <div><h2>{activeNav === "Overview" ? "Your projects" : activeNav}</h2><p>{activeNav === "Overview" ? "Pick up where your imagination left off." : "Your creative library, all in one place."}</p></div>
