@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import { readSessionFromRequest } from "@/lib/auth";
 
 export const runtime = "nodejs";
 type RouteContext = { params: Promise<{ episodeId: string }> };
 
-export async function GET(_request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext) {
+  const session = readSessionFromRequest(request);
+  if (!session || session.role !== "writer" || !session.userId) return NextResponse.json({ error: "Please sign in as a writer." }, { status: 401 });
   try {
     const { episodeId } = await context.params;
     if (!ObjectId.isValid(episodeId)) return NextResponse.json({ error: "Invalid episode ID." }, { status: 400 });
     const db = await getDb();
+    const episode = await db.collection("episodes").findOne({ _id: new ObjectId(episodeId) });
+    if (!episode) return NextResponse.json({ error: "Episode not found." }, { status: 404 });
+    const ownedProject = await db.collection("projects").findOne({ _id: new ObjectId(episode.projectId), ownerId: session.userId }, { projection: { _id: 1 } });
+    if (!ownedProject) return NextResponse.json({ error: "Episode not found." }, { status: 404 });
+    const project = await db.collection("projects").findOne({ _id: new ObjectId(episode.projectId), ownerId: session.userId }, { projection: { _id: 1 } });
+    if (!project) return NextResponse.json({ error: "Episode not found." }, { status: 404 });
     const scenes = await db.collection("scenes").find({ episodeId }).sort({ order: 1, createdAt: 1 }).toArray();
     return NextResponse.json(scenes.map((scene) => ({ ...scene, _id: scene._id.toString() })));
   } catch (error) {
@@ -19,6 +28,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
+  const session = readSessionFromRequest(request);
+  if (!session || session.role !== "writer" || !session.userId) return NextResponse.json({ error: "Please sign in as a writer." }, { status: 401 });
   try {
     const { episodeId } = await context.params;
     if (!ObjectId.isValid(episodeId)) return NextResponse.json({ error: "Invalid episode ID." }, { status: 400 });
