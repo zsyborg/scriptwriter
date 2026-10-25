@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, Check, ChevronDown, Clock3, FilePlus2, MapPin, Plus, Save, UsersRound } from "lucide-react";
 import WorldLibrary from "./world-library";
+import SceneContentEditor from "./scene-content-editor";
 
 type Project = { _id: string; title: string; description?: string };
 type Episode = { _id: string; title: string; order: number };
@@ -185,9 +186,9 @@ export default function ProjectWorkspace() {
                 {locations.length ? <div className="scene-reference-options">{locations.map((location) => <label key={location._id}><input type="checkbox" checked={(currentScene.locationIds || []).includes(location._id)} onChange={(event) => toggleSceneReference("locations", location._id, event.target.checked)} /><span>{location.name}</span></label>)}</div> : <p>No locations yet. <button type="button" onClick={() => setActiveLibrary("locations")}>Create one</button></p>}
               </div>
             </section>
-            <div className="editor-format-toolbar"><span className="format-chip">Aa</span><span className="format-toolbar-note">A quiet place for your next scene</span><span className="editor-word-count">{draft.trim() ? draft.trim().split(/\s+/).length : 0} words</span></div>
-            <textarea className="scene-editor" aria-label="Scene content" placeholder={"The scene begins…\n\nDescribe what we see, what the characters do, and what they say.\n\nYour story is yours to tell."} value={draft} onChange={(e) => changeDraft(e.target.value)} spellCheck />
-            <footer className="editor-footer"><span>Plain text editor · Rich-text and character references are coming next</span><span>{draft.length.toLocaleString()} characters</span></footer>
+            <div className="editor-format-toolbar"><span className="format-chip">Aa</span><span className="format-toolbar-note">Insert linked characters and locations into your scene</span><span className="editor-word-count">{draft.replace(/<[^>]*>/g," ").trim()?draft.replace(/<[^>]*>/g," ").trim().split(/\s+/).length:0} words</span></div>
+<SceneContentEditor key={currentScene._id} value={draft} characters={characters} locations={locations} onChange={changeDraft}/>
+<footer className="editor-footer"><span>Linked mentions · Click a name to view saved details</span><span>{draft.replace(/<[^>]*>/g,"").length.toLocaleString()} characters</span></footer>
           </> : <div className="editor-empty"><div className="editor-empty-icon"><FilePlus2 size={25} /></div><h2>A blank page is full of possibility.</h2><p>Create an episode and a scene to start writing your story.</p>{!episodes.length ? <button className="story-primary-button" onClick={() => setShowEpisodeInput(true)}><Plus size={16} /> Add first episode</button> : <button className="story-primary-button" onClick={() => setShowSceneInput(true)}><Plus size={16} /> Add first scene</button>}</div>}
         </section>
       </div>
