@@ -19,7 +19,7 @@ export async function POST(request: NextRequest, context: Context) {
  const db=await getDb(); if(!await db.collection("projects").findOne({_id:new ObjectId(projectId)},{projection:{_id:1}})) return NextResponse.json({error:"Project not found."},{status:404});
  const body=await request.json() as Record<string,unknown>; const name=typeof body.name==="string"?body.name.trim():"";
  if(!name||name.length>100) return NextResponse.json({error:"Character name is required (max 100 characters)."},{status:400});
- const fields:Record<string,string>={name}; for(const key of ["description","appearance","personality","notes"]) { if(body[key]!==undefined) { if(typeof body[key]!=="string"||(body[key] as string).length>3000) return NextResponse.json({error:key+" must be text up to 3000 characters."},{status:400}); fields[key]=(body[key] as string).trim(); } }
+ const fields:Record<string,string>={name}; for(const key of ["description","appearance","personality","weapons","abilities","notes"]) { if(body[key]!==undefined) { if(typeof body[key]!=="string"||(body[key] as string).length>3000) return NextResponse.json({error:key+" must be text up to 3000 characters."},{status:400}); fields[key]=(body[key] as string).trim(); } }
  if(await db.collection("characters").findOne({projectId,name})) return NextResponse.json({error:"A character with this name already exists."},{status:409});
  const now=new Date(); const item={projectId,...fields,createdAt:now,updatedAt:now}; const result=await db.collection("characters").insertOne(item);
  return NextResponse.json({...item,_id:result.insertedId.toString()},{status:201});
