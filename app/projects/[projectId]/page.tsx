@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, Check, ChevronDown, Clock3, FilePlus2, MapPin, Plus, Save, UsersRound } from "lucide-react";
+import WorldLibrary from "./world-library";
 
 type Project = { _id: string; title: string; description?: string };
 type Episode = { _id: string; title: string; order: number };
-type Scene = { _id: string; episodeId: string; title: string; content: string; order: number };
+type Scene = { _id: string; episodeId: string; title: string; content: string; order: number; characterIds?: string[]; locationIds?: string[] };
+type LibraryItem = { _id: string; name: string; description?: string; appearance?: string; personality?: string; notes?: string; details?: string };
 
 export default function ProjectWorkspace() {
   const params = useParams<{ projectId: string }>();
@@ -27,6 +29,9 @@ export default function ProjectWorkspace() {
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState("All changes saved");
   const [error, setError] = useState("");
+  const [characters, setCharacters] = useState<LibraryItem[]>([]);
+  const [locations, setLocations] = useState<LibraryItem[]>([]);
+  const [activeLibrary, setActiveLibrary] = useState<"characters" | "locations" | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentScene = scenes.find((scene) => scene._id === selectedScene) ?? null;
@@ -36,15 +41,14 @@ export default function ProjectWorkspace() {
     fetch("/api/auth/me").then((response) => response.json()).then((data) => { if (!cancelled && data.user?.role !== "writer") router.replace("/login"); }).catch(() => { if (!cancelled) router.replace("/login"); });
     async function load() {
       try {
-        const [projectResponse, episodeResponse] = await Promise.all([
-          fetch(`/api/projects/${projectId}`),
-          fetch(`/api/projects/${projectId}/episodes`),
+        const [projectResponse, episodeResponse, characterResponse, locationResponse] = await Promise.all([
+          fetch(`/api/projects/${projectId}`), fetch(`/api/projects/${projectId}/episodes`),
+          fetch(`/api/projects/${projectId}/characters`), fetch(`/api/projects/${projectId}/locations`),
         ]);
         if (!projectResponse.ok || !episodeResponse.ok) throw new Error("Could not load this story. Check the database connection.");
-        const [projectData, episodeData] = await Promise.all([projectResponse.json(), episodeResponse.json()]);
+        const [projectData, episodeData, characterData, locationData] = await Promise.all([projectResponse.json(), episodeResponse.json(), characterResponse.ok ? characterResponse.json() : [], locationResponse.ok ? locationResponse.json() : []]);
         if (cancelled) return;
-        setProject(projectData);
-        setEpisodes(episodeData);
+        setProject(projectData); setEpisodes(episodeData); setCharacters(characterData); setLocations(locationData);
         if (episodeData.length) setSceneTargetEpisodeId(episodeData[0]._id);
         if (episodeData.length) {
           const sceneResponses = await Promise.all(episodeData.map((episode: Episode) => fetch(`/api/episodes/${episode._id}/scenes`)));
@@ -129,6 +133,17 @@ export default function ProjectWorkspace() {
     setError("");
   }
 
+
+  async function toggleSceneReference(kind: "characters" | "locations", itemId: string, checked: boolean) {
+    if (!currentScene) return;
+    const previous = kind === "characters" ? currentScene.characterIds || [] : currentScene.locationIds || [];
+    const next = checked ? [...new Set([...previous, itemId])] : previous.filter((id) => id !== itemId);
+    const response = await fetch(`/api/scenes/${currentScene._id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(kind === "characters" ? { characterIds: next } : { locationIds: next }) });
+    const data = await response.json();
+    if (!response.ok) { setError(data.error || "Could not update scene references."); return; }
+    setScenes((current) => current.map((scene) => scene._id === currentScene._id ? { ...scene, ...data } : scene)); setError("");
+  }
+
   if (!project && !error) return <main className="workspace-loading"><div className="loading-mark"><BookOpen size={22} /></div><p>Opening your story…</p></main>;
 
   return (
@@ -154,7 +169,7 @@ export default function ProjectWorkspace() {
           })}
           <button className="outline-add-scene" onClick={() => { setSceneTargetEpisodeId((current) => current || episodes[0]?._id || ""); setShowSceneInput((value) => !value); }} disabled={!episodes.length}><Plus size={15} /> Add scene</button>
           {showSceneInput && <form className="inline-create-form scene-create-form" onSubmit={addScene}><select aria-label="Episode for new scene" value={sceneTargetEpisodeId} onChange={(e) => setSceneTargetEpisodeId(e.target.value)} required>{episodes.map((episode) => <option key={episode._id} value={episode._id}>{episode.title}</option>)}</select><input autoFocus value={newSceneTitle} onChange={(e) => setNewSceneTitle(e.target.value)} placeholder="Scene title" maxLength={120} required /><button type="submit" aria-label="Save scene"><Check size={15} /></button></form>}
-          <div className="outline-tools"><button onClick={() => setError("Character library is the next feature being built.")}><UsersRound size={16} /> Characters <span>→</span></button><button onClick={() => setError("Location library is the next feature being built.")}><MapPin size={16} /> Locations <span>→</span></button></div>
+          <div className="outline-tools"><button onClick={() => setActiveLibrary("characters")}><UsersRound size={16} /> Characters <span>{characters.length}</span></button><button onClick={() => setActiveLibrary("locations")}><MapPin size={16} /> Locations <span>{locations.length}</span></button></div>
         </aside>
 
         <section className="writing-room">
@@ -162,12 +177,21 @@ export default function ProjectWorkspace() {
           {currentScene ? <>
             <div className="editor-topline"><div><span className="editor-label">SCENE EDITOR</span><span className="editor-separator">·</span><span className="editor-time"><Clock3 size={13} /> Autosave on</span></div><button className="save-now" onClick={() => saveScene(currentScene._id, sceneTitle, draft)} disabled={saving}><Save size={15} /> Save</button></div>
             <input className="scene-title-input" aria-label="Scene title" value={sceneTitle} maxLength={120} onChange={(e) => { setSceneTitle(e.target.value); setSaveState("Unsaved changes"); if (timer.current) clearTimeout(timer.current); const value = e.target.value; if (currentScene) timer.current = setTimeout(() => saveScene(currentScene._id, value, draft), 800); }} />
+            <section className="scene-reference-panel" aria-label="Scene references">
+              <div className="scene-reference-group"><strong><UsersRound size={14} /> Characters</strong>
+                {characters.length ? <div className="scene-reference-options">{characters.map((character) => <label key={character._id}><input type="checkbox" checked={(currentScene.characterIds || []).includes(character._id)} onChange={(event) => toggleSceneReference("characters", character._id, event.target.checked)} /><span>{character.name}</span></label>)}</div> : <p>No characters yet. <button type="button" onClick={() => setActiveLibrary("characters")}>Create one</button></p>}
+              </div>
+              <div className="scene-reference-group"><strong><MapPin size={14} /> Locations</strong>
+                {locations.length ? <div className="scene-reference-options">{locations.map((location) => <label key={location._id}><input type="checkbox" checked={(currentScene.locationIds || []).includes(location._id)} onChange={(event) => toggleSceneReference("locations", location._id, event.target.checked)} /><span>{location.name}</span></label>)}</div> : <p>No locations yet. <button type="button" onClick={() => setActiveLibrary("locations")}>Create one</button></p>}
+              </div>
+            </section>
             <div className="editor-format-toolbar"><span className="format-chip">Aa</span><span className="format-toolbar-note">A quiet place for your next scene</span><span className="editor-word-count">{draft.trim() ? draft.trim().split(/\s+/).length : 0} words</span></div>
             <textarea className="scene-editor" aria-label="Scene content" placeholder={"The scene begins…\n\nDescribe what we see, what the characters do, and what they say.\n\nYour story is yours to tell."} value={draft} onChange={(e) => changeDraft(e.target.value)} spellCheck />
             <footer className="editor-footer"><span>Plain text editor · Rich-text and character references are coming next</span><span>{draft.length.toLocaleString()} characters</span></footer>
           </> : <div className="editor-empty"><div className="editor-empty-icon"><FilePlus2 size={25} /></div><h2>A blank page is full of possibility.</h2><p>Create an episode and a scene to start writing your story.</p>{!episodes.length ? <button className="story-primary-button" onClick={() => setShowEpisodeInput(true)}><Plus size={16} /> Add first episode</button> : <button className="story-primary-button" onClick={() => setShowSceneInput(true)}><Plus size={16} /> Add first scene</button>}</div>}
         </section>
       </div>
+      {activeLibrary && <WorldLibrary projectId={projectId} kind={activeLibrary} onClose={() => setActiveLibrary(null)} items={activeLibrary === "characters" ? characters : locations} setItems={activeLibrary === "characters" ? setCharacters : setLocations} setScenes={setScenes} />}
     </main>
   );
 }
