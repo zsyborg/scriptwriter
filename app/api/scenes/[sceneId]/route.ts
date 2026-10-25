@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import { readSessionFromRequest } from "@/lib/auth";
 
 export const runtime = "nodejs";
 type RouteContext = { params: Promise<{ sceneId: string }> };
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
+  const session = readSessionFromRequest(request);
+  if (!session || session.role !== "writer" || !session.userId) return NextResponse.json({ error: "Please sign in as a writer." }, { status: 401 });
   try {
     const { sceneId } = await context.params;
     if (!ObjectId.isValid(sceneId)) return NextResponse.json({ error: "Invalid scene ID." }, { status: 400 });
@@ -22,6 +25,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
     if (!update.title && update.content === undefined) return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
     const db = await getDb();
+    const existingScene = await db.collection("scenes").findOne({ _id: new ObjectId(sceneId) });
+    if (!existingScene) return NextResponse.json({ error: "Scene not found." }, { status: 404 });
+    const ownedProject = await db.collection("projects").findOne({ _id: new ObjectId(existingScene.projectId), ownerId: session.userId }, { projection: { _id: 1 } });
+    if (!ownedProject) return NextResponse.json({ error: "Scene not found." }, { status: 404 });
     const result = await db.collection("scenes").findOneAndUpdate(
       { _id: new ObjectId(sceneId) },
       { $set: update },
