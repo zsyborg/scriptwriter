@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   BookOpen, ChevronDown, CircleHelp, Clapperboard, Clock3, Compass, FilePlus2,
   FolderOpen, MapPin, Menu, MoreHorizontal, Plus, Search, Settings2, Sparkles,
@@ -31,6 +32,7 @@ const navItems = [
 ];
 
 export default function Home() {
+  const router = useRouter();
   const [activeNav, setActiveNav] = useState("Overview");
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [query, setQuery] = useState("");
@@ -193,7 +195,7 @@ export default function Home() {
                     <div className="project-title-row"><h3>{project.title}</h3><span className="status-dot" title="In progress" /></div>
                     <p className="project-description">{project.description || "A new story waiting to be written."}</p>
                     <div className="project-meta"><span><BookOpen size={14} /> {project.episodeCount ?? 0} episodes</span><span><PenLine size={14} /> {project.sceneCount ?? 0} scenes</span></div>
-                    <div className="project-card-footer"><span><Clock3 size={13} /> {project.updatedAt || "Recently updated"}</span><button onClick={() => setNotice("Episode and scene editing is the next milestone.")}>Open story <ArrowUpRight size={14} /></button></div>
+                    <div className="project-card-footer"><span><Clock3 size={13} /> {project.updatedAt || "Recently updated"}</span><button onClick={() => { if (project._id.startsWith("sample-")) setNotice("Create a project to open its writing room."); else router.push(`/projects/${project._id}`); }}>Open story <ArrowUpRight size={14} /></button></div>
                   </div>
                 </article>
               ))}
