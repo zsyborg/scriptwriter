@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
+import { readSessionFromRequest } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const session = readSessionFromRequest(request);
+  if (!session || session.role !== "writer" || !session.userId) return NextResponse.json({ error: "Please sign in as a writer." }, { status: 401 });
   try {
     const db = await getDb();
-    const projects = await db.collection("projects").find({}).sort({ updatedAt: -1 }).limit(100).toArray();
+    const projects = await db.collection("projects").find({ ownerId: session.userId }).sort({ updatedAt: -1 }).limit(100).toArray();
     return NextResponse.json(projects.map((project) => ({ ...project, _id: project._id.toString() })));
   } catch (error) {
     console.error("List projects failed:", error);
@@ -15,6 +18,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const session = readSessionFromRequest(request);
+  if (!session || session.role !== "writer" || !session.userId) return NextResponse.json({ error: "Please sign in as a writer." }, { status: 401 });
   try {
     const body = await request.json();
     const title = typeof body.title === "string" ? body.title.trim() : "";
@@ -31,6 +36,7 @@ export async function POST(request: NextRequest) {
     const project = {
       title,
       description,
+      ownerId: session.userId,
       createdAt: now,
       updatedAt: now,
       episodeCount: 0,
