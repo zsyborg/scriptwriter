@@ -47,6 +47,9 @@ A mobile-first writing workspace for building story projects, characters, locati
 - Mobile-first workspace dashboard
 - Project creation dialog
 - MongoDB connection helper
+- Separate writer and admin sign-in
+- Admin user creation, password reset, and account enable/disable
+- Hashed writer passwords and signed HTTP-only sessions
 - Project listing and creation API
 - Initial project cards and navigation concepts
 
@@ -54,11 +57,10 @@ The initial project cards are sample preview content. Project creation uses the 
 
 ## Planned milestones
 
-1. Authentication and per-user data isolation
-2. Project, episode, and scene CRUD
-3. Character and location libraries
-4. Rich-text scene editor with structured character/location references
-5. Autosave, export, and polished mobile editing
+1. Character and location libraries
+2. Rich-text scene editor with structured character/location references
+3. Export and polished mobile editing
+
 
 ## Important security note
 
