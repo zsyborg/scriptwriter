@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
-import { readSessionFromRequest } from "@/lib/auth";
+import { getActiveWriterSession } from "@/lib/auth";
 
 export const runtime = "nodejs";
 type RouteContext = { params: Promise<{ projectId: string }> };
 
 export async function GET(request: NextRequest, context: RouteContext) {
-  const session = readSessionFromRequest(request);
+  const session = await getActiveWriterSession(request);
   if (!session || session.role !== "writer" || !session.userId) return NextResponse.json({ error: "Please sign in as a writer." }, { status: 401 });
   try {
     const { projectId } = await context.params;
