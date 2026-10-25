@@ -33,10 +33,10 @@ export function readSessionFromRequest(request: NextRequest | Request): SessionU
   const cookieHeader = request.headers.get("cookie") || "";
   const match = cookieHeader.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${COOKIE_NAME}=`));
   if (!match) return null;
-  const token = decodeURIComponent(match.slice(COOKIE_NAME.length + 1));
-  const [encoded, signature] = token.split(".");
-  if (!encoded || !signature) return null;
   try {
+    const token = decodeURIComponent(match.slice(COOKIE_NAME.length + 1));
+    const [encoded, signature] = token.split(".");
+    if (!encoded || !signature) return null;
     const expected = Buffer.from(sign(encoded));
     const actual = Buffer.from(signature);
     if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
