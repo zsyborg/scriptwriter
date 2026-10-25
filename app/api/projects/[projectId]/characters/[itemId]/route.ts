@@ -21,6 +21,6 @@ export async function DELETE(request: NextRequest, context: Context) {
  try { const {projectId,itemId}=await context.params; if(!ObjectId.isValid(projectId)||!ObjectId.isValid(itemId)) return NextResponse.json({error:"Invalid ID."},{status:400});
  const db=await getDb(); if(!await db.collection("projects").findOne({_id:new ObjectId(projectId),ownerId:session.userId},{projection:{_id:1}})) return NextResponse.json({error:"Project not found."},{status:404});
  const result=await db.collection("characters").deleteOne({_id:new ObjectId(itemId),projectId}); if(!result.deletedCount) return NextResponse.json({error:"Character not found."},{status:404});
- await db.collection("scenes").updateMany({projectId},{$pull:{characterIds:itemId}}); return NextResponse.json({success:true});
+ await db.collection("scenes").updateMany({projectId},{$pull:{characterIds:{$eq:itemId}}}); return NextResponse.json({success:true});
  } catch(e) { console.error("Delete characters failed:",e); return NextResponse.json({error:"Could not delete character."},{status:503}); }
 }
