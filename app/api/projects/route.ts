@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   if (!session || session.role !== "writer" || !session.userId) return NextResponse.json({ error: "Please sign in as a writer." }, { status: 401 });
   try {
     const db = await getDb();
-    const projects = await db.collection("projects").find({ ownerId: session.userId }).sort({ updatedAt: -1 }).limit(100).toArray();
+    const projects = await db.collection("projects").find({}).sort({ updatedAt: -1 }).limit(100).toArray();
     return NextResponse.json(projects.map((project) => ({ ...project, _id: project._id.toString() })));
   } catch (error) {
     console.error("List projects failed:", error);

@@ -7,7 +7,7 @@ type Context = { params: Promise<{ projectId: string }> };
 export async function GET(request: NextRequest, context: Context) {
  const session = await getActiveWriterSession(request); if (!session?.userId) return NextResponse.json({error:"Please sign in as a writer."},{status:401});
  try { const {projectId}=await context.params; if(!ObjectId.isValid(projectId)) return NextResponse.json({error:"Invalid project ID."},{status:400});
- const db=await getDb(); const project=await db.collection("projects").findOne({_id:new ObjectId(projectId),ownerId:session.userId},{projection:{_id:1}});
+ const db=await getDb(); const project=await db.collection("projects").findOne({_id:new ObjectId(projectId)},{projection:{_id:1}});
  if(!project) return NextResponse.json({error:"Project not found."},{status:404});
  const items=await db.collection("locations").find({projectId}).sort({name:1}).limit(500).toArray();
  return NextResponse.json(items.map(item=>({...item,_id:item._id.toString()})));
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, context: Context) {
 export async function POST(request: NextRequest, context: Context) {
  const session=await getActiveWriterSession(request); if(!session?.userId) return NextResponse.json({error:"Please sign in as a writer."},{status:401});
  try { const {projectId}=await context.params; if(!ObjectId.isValid(projectId)) return NextResponse.json({error:"Invalid project ID."},{status:400});
- const db=await getDb(); if(!await db.collection("projects").findOne({_id:new ObjectId(projectId),ownerId:session.userId},{projection:{_id:1}})) return NextResponse.json({error:"Project not found."},{status:404});
+ const db=await getDb(); if(!await db.collection("projects").findOne({_id:new ObjectId(projectId)},{projection:{_id:1}})) return NextResponse.json({error:"Project not found."},{status:404});
  const body=await request.json() as Record<string,unknown>; const name=typeof body.name==="string"?body.name.trim():"";
  if(!name||name.length>100) return NextResponse.json({error:"Location name is required (max 100 characters)."},{status:400});
  const fields:Record<string,string>={name}; for(const key of ["description","details","notes"]) { if(body[key]!==undefined) { if(typeof body[key]!=="string"||(body[key] as string).length>3000) return NextResponse.json({error:key+" must be text up to 3000 characters."},{status:400}); fields[key]=(body[key] as string).trim(); } }
