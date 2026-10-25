@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
-  const session = readSessionFromRequest(request);
+  const session = await getActiveWriterSession(request);
   if (!session || session.role !== "writer" || !session.userId) return NextResponse.json({ error: "Please sign in as a writer." }, { status: 401 });
   try {
     const { episodeId } = await context.params;
