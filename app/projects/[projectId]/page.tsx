@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, Check, ChevronDown, Clock3, FilePlus2, MapPin, Plus, Save, UsersRound } from "lucide-react";
 
 type Project = { _id: string; title: string; description?: string };
@@ -11,6 +11,7 @@ type Scene = { _id: string; episodeId: string; title: string; content: string; o
 
 export default function ProjectWorkspace() {
   const params = useParams<{ projectId: string }>();
+  const router = useRouter();
   const projectId = params.projectId;
   const [project, setProject] = useState<Project | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
@@ -32,6 +33,7 @@ export default function ProjectWorkspace() {
 
   useEffect(() => {
     let cancelled = false;
+    fetch("/api/auth/me").then((response) => response.json()).then((data) => { if (!cancelled && data.user?.role !== "writer") router.replace("/login"); }).catch(() => { if (!cancelled) router.replace("/login"); });
     async function load() {
       try {
         const [projectResponse, episodeResponse] = await Promise.all([
@@ -62,7 +64,7 @@ export default function ProjectWorkspace() {
     }
     load();
     return () => { cancelled = true; if (timer.current) clearTimeout(timer.current); };
-  }, [projectId]);
+  }, [projectId, router]);
 
   const saveScene = useCallback(async (sceneId: string, title: string, content: string) => {
     if (!sceneId) return;
