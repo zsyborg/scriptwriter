@@ -32,14 +32,7 @@ A mobile-first writing workspace for building story projects, characters, locati
    ADMIN_PASSWORD=zasha
    ```
 
-   The requested initial admin credentials are `zasha` / `zasha` when the admin variables are not set. **Before deploying publicly, set a strong `ADMIN_PASSWORD` and a unique, long `SESSION_SECRET` in your hosting provider’s environment settings.** Do not commit `.env.local` or production secrets.
-
-   Example local connection:
-
-   ```env
-   MONGODB_URI=mongodb://127.0.0.1:27017
-   MONGODB_DB=scriptwriter
-   ```
+   The requested initial admin credentials are `zasha` / `zasha` for local development when the admin variables are not set. Production mode requires explicit `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `SESSION_SECRET` values. **Before deploying publicly, set a strong admin password and a unique, long session secret in your hosting provider’s environment settings.** Do not commit `.env.local` or production secrets.
 
 3. Start the development server:
 
