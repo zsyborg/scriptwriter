@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./story.css";
 
 export const metadata: Metadata = {
   title: "Scriptwriter — Stories, brought to life",
