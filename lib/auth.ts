@@ -1,5 +1,7 @@
 import { createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
+import { ObjectId } from "mongodb";
+import { getDb } from "@/lib/mongodb";
 
 function deriveKey(password: string, salt: string, keyLength: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -70,9 +72,21 @@ export async function verifyPassword(password: string, stored: string) {
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
+export async function getActiveWriterSession(request: NextRequest | Request): Promise<SessionUser | null> {
+  const session = readSessionFromRequest(request);
+  if (!session || session.role !== "writer" || !session.userId || !ObjectId.isValid(session.userId)) return null;
+  try {
+    const db = await getDb();
+    const user = await db.collection("users").findOne({ _id: new ObjectId(session.userId), username: session.username, role: "writer", active: { $ne: false } }, { projection: { _id: 1 } });
+    return user ? session : null;
+  } catch {
+    return null;
+  }
+}
+
 export function adminCredentialsMatch(username: string, password: string) {
-  const expectedUsername = process.env.ADMIN_USERNAME || "zasha";
-  const expectedPassword = process.env.ADMIN_PASSWORD || "zasha";
+  const expectedUsername = process.env.ADMIN_USERNAME || (process.env.NODE_ENV === "production" ? "" : "zasha");
+  const expectedPassword = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === "production" ? "" : "zasha");
   const userBuffer = Buffer.from(username);
   const expectedUserBuffer = Buffer.from(expectedUsername);
   const passBuffer = Buffer.from(password);
