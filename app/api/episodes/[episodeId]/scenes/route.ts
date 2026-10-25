@@ -17,8 +17,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
     if (!episode) return NextResponse.json({ error: "Episode not found." }, { status: 404 });
     const ownedProject = await db.collection("projects").findOne({ _id: new ObjectId(episode.projectId), ownerId: session.userId }, { projection: { _id: 1 } });
     if (!ownedProject) return NextResponse.json({ error: "Episode not found." }, { status: 404 });
-    const project = await db.collection("projects").findOne({ _id: new ObjectId(episode.projectId), ownerId: session.userId }, { projection: { _id: 1 } });
-    if (!project) return NextResponse.json({ error: "Episode not found." }, { status: 404 });
     const scenes = await db.collection("scenes").find({ episodeId }).sort({ order: 1, createdAt: 1 }).toArray();
     return NextResponse.json(scenes.map((scene) => ({ ...scene, _id: scene._id.toString() })));
   } catch (error) {
@@ -39,6 +37,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const db = await getDb();
     const episode = await db.collection("episodes").findOne({ _id: new ObjectId(episodeId) });
     if (!episode) return NextResponse.json({ error: "Episode not found." }, { status: 404 });
+    const ownedProject = await db.collection("projects").findOne({ _id: new ObjectId(episode.projectId), ownerId: session.userId }, { projection: { _id: 1 } });
+    if (!ownedProject) return NextResponse.json({ error: "Episode not found." }, { status: 404 });
     const order = await db.collection("scenes").countDocuments({ episodeId });
     const now = new Date();
     const scene = { episodeId, projectId: episode.projectId, title, content: "", order, createdAt: now, updatedAt: now };
