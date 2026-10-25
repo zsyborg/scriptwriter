@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen, ChevronDown, CircleHelp, Clapperboard, Clock3, Compass, FilePlus2,
   FolderOpen, MapPin, Menu, MoreHorizontal, Plus, Search, Settings2, Sparkles,
@@ -40,6 +40,22 @@ export default function Home() {
   const [notice, setNotice] = useState("");
   const [mobileNav, setMobileNav] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/projects")
+      .then((response) => {
+        if (!response.ok) throw new Error("Projects API unavailable");
+        return response.json();
+      })
+      .then((items: Project[]) => {
+        if (!cancelled && Array.isArray(items)) setProjects(items);
+      })
+      .catch(() => {
+        // Keep the sample preview available when MongoDB has not been configured yet.
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const filteredProjects = useMemo(
     () => projects.filter((p) => (p.title + " " + (p.description || "")).toLowerCase().includes(query.toLowerCase())),
