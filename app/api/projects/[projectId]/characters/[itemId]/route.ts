@@ -7,7 +7,7 @@ type Context = { params: Promise<{ projectId: string; itemId: string }> };
 export async function PATCH(request: NextRequest, context: Context) {
  const session=await getActiveWriterSession(request); if(!session?.userId) return NextResponse.json({error:"Please sign in as a writer."},{status:401});
  try { const {projectId,itemId}=await context.params; if(!ObjectId.isValid(projectId)||!ObjectId.isValid(itemId)) return NextResponse.json({error:"Invalid ID."},{status:400});
- const db=await getDb(); if(!await db.collection("projects").findOne({_id:new ObjectId(projectId),ownerId:session.userId},{projection:{_id:1}})) return NextResponse.json({error:"Project not found."},{status:404});
+ const db=await getDb(); if(!await db.collection("projects").findOne({_id:new ObjectId(projectId)},{projection:{_id:1}})) return NextResponse.json({error:"Project not found."},{status:404});
  const body=await request.json() as Record<string,unknown>; const update:Record<string,string|Date>={updatedAt:new Date()};
  if(body.name!==undefined) { const name=typeof body.name==="string"?body.name.trim():""; if(!name||name.length>100) return NextResponse.json({error:"Character name is required (max 100 characters)."},{status:400}); if(await db.collection("characters").findOne({projectId,name,_id:{$ne:new ObjectId(itemId)}})) return NextResponse.json({error:"A character with this name already exists."},{status:409}); update.name=name; }
  for(const key of ["description","appearance","personality","notes"]) if(body[key]!==undefined) { if(typeof body[key]!=="string"||(body[key] as string).length>3000) return NextResponse.json({error:key+" must be text up to 3000 characters."},{status:400}); update[key]=(body[key] as string).trim(); }
@@ -19,7 +19,7 @@ export async function PATCH(request: NextRequest, context: Context) {
 export async function DELETE(request: NextRequest, context: Context) {
  const session=await getActiveWriterSession(request); if(!session?.userId) return NextResponse.json({error:"Please sign in as a writer."},{status:401});
  try { const {projectId,itemId}=await context.params; if(!ObjectId.isValid(projectId)||!ObjectId.isValid(itemId)) return NextResponse.json({error:"Invalid ID."},{status:400});
- const db=await getDb(); if(!await db.collection("projects").findOne({_id:new ObjectId(projectId),ownerId:session.userId},{projection:{_id:1}})) return NextResponse.json({error:"Project not found."},{status:404});
+ const db=await getDb(); if(!await db.collection("projects").findOne({_id:new ObjectId(projectId)},{projection:{_id:1}})) return NextResponse.json({error:"Project not found."},{status:404});
  const result=await db.collection("characters").deleteOne({_id:new ObjectId(itemId),projectId}); if(!result.deletedCount) return NextResponse.json({error:"Character not found."},{status:404});
  await db.collection("scenes").updateMany({projectId},[{$set:{characterIds:{$filter:{input:{$ifNull:["$characterIds",[]]},as:"referenceId",cond:{$ne:["$referenceId",itemId]}}}}}]); return NextResponse.json({success:true});
  } catch(e) { console.error("Delete characters failed:",e); return NextResponse.json({error:"Could not delete character."},{status:503}); }

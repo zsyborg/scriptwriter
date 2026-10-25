@@ -42,7 +42,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const db = await getDb();
     const existingScene = await db.collection("scenes").findOne({ _id: new ObjectId(sceneId) });
     if (!existingScene) return NextResponse.json({ error: "Scene not found." }, { status: 404 });
-    const ownedProject = await db.collection("projects").findOne({ _id: new ObjectId(existingScene.projectId), ownerId: session.userId }, { projection: { _id: 1 } });
+    const ownedProject = await db.collection("projects").findOne({ _id: new ObjectId(existingScene.projectId) }, { projection: { _id: 1 } });
     if (!ownedProject) return NextResponse.json({ error: "Scene not found." }, { status: 404 });
     if(typeof update.content==="string"){
       const mentions=[...update.content.matchAll(/data-entity-type="(character|location)" data-entity-id="([a-f0-9]{24})"/gi)];

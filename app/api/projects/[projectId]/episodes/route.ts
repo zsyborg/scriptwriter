@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const { projectId } = await context.params;
     if (!ObjectId.isValid(projectId)) return NextResponse.json({ error: "Invalid project ID." }, { status: 400 });
     const db = await getDb();
-    const project = await db.collection("projects").findOne({ _id: new ObjectId(projectId), ownerId: session.userId }, { projection: { _id: 1 } });
+    const project = await db.collection("projects").findOne({ _id: new ObjectId(projectId) }, { projection: { _id: 1 } });
     if (!project) return NextResponse.json({ error: "Project not found." }, { status: 404 });
     const episodes = await db.collection("episodes").find({ projectId }).sort({ order: 1, createdAt: 1 }).toArray();
     return NextResponse.json(episodes.map((episode) => ({ ...episode, _id: episode._id.toString() })));
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const title = typeof body.title === "string" ? body.title.trim() : "";
     if (!title || title.length > 120) return NextResponse.json({ error: "Episode title is required (max 120 characters)." }, { status: 400 });
     const db = await getDb();
-    const project = await db.collection("projects").findOne({ _id: new ObjectId(projectId), ownerId: session.userId }, { projection: { _id: 1 } });
+    const project = await db.collection("projects").findOne({ _id: new ObjectId(projectId) }, { projection: { _id: 1 } });
     if (!project) return NextResponse.json({ error: "Project not found." }, { status: 404 });
     const order = await db.collection("episodes").countDocuments({ projectId });
     const now = new Date();

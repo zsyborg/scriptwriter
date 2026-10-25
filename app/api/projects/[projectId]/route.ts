@@ -16,7 +16,7 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Invalid project ID." }, { status: 400 });
     }
     const db = await getDb();
-    const project = await db.collection("projects").findOne({ _id: new ObjectId(projectId), ownerId: session.userId });
+    const project = await db.collection("projects").findOne({ _id: new ObjectId(projectId) });
     if (!project) return NextResponse.json({ error: "Project not found." }, { status: 404 });
     return NextResponse.json({ ...project, _id: project._id.toString() });
   } catch (error) {
