@@ -22,7 +22,17 @@ A mobile-first writing workspace for building story projects, characters, locati
    pnpm install
    ```
 
-2. Copy `.env.example` to `.env.local` and configure `MONGODB_URI`. The database name defaults to `scriptwriter`.
+2. Copy `.env.example` to `.env.local` and configure the database and authentication secrets. The database name defaults to `scriptwriter`.
+
+   ```env
+   MONGODB_URI=mongodb://127.0.0.1:27017
+   MONGODB_DB=scriptwriter
+   SESSION_SECRET=replace-with-a-long-random-secret
+   ADMIN_USERNAME=zasha
+   ADMIN_PASSWORD=zasha
+   ```
+
+   The requested initial admin credentials are `zasha` / `zasha` when the admin variables are not set. **Before deploying publicly, set a strong `ADMIN_PASSWORD` and a unique, long `SESSION_SECRET` in your hosting provider’s environment settings.** Do not commit `.env.local` or production secrets.
 
    Example local connection:
 
@@ -37,7 +47,7 @@ A mobile-first writing workspace for building story projects, characters, locati
    pnpm dev
    ```
 
-4. Visit http://localhost:3000. Check the database connection at `/api/health`.
+4. Visit `/login` to sign in as a writer. Open `/admin` to sign in as the administrator, create writer accounts, reset passwords, or disable accounts. Writer accounts and password hashes are stored in the MongoDB `users` collection. The admin login is separate and uses the `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables.
 
 ## Current milestone
 
@@ -59,4 +69,4 @@ The initial project cards are sample preview content. Project creation uses the 
 
 ## Important security note
 
-This is an early development scaffold. Do not deploy publicly with real user data until authentication, authorization, and per-user data isolation have been implemented and tested.
+This is an early development scaffold. Authentication and per-user project ownership checks are implemented, but run a production build and security review before deploying with real user data. Configure strong production credentials and `SESSION_SECRET`; the default admin credentials are for initial local setup only.
