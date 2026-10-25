@@ -45,6 +45,17 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
+    fetch("/api/auth/me")
+      .then((response) => response.json())
+      .then((data) => {
+        if (!cancelled && data.user?.role !== "writer") router.replace("/login");
+      })
+      .catch(() => { if (!cancelled) router.replace("/login"); });
+    return () => { cancelled = true; };
+  }, [router]);
+
+  useEffect(() => {
+    let cancelled = false;
     fetch("/api/projects")
       .then((response) => {
         if (!response.ok) throw new Error("Projects API unavailable");
