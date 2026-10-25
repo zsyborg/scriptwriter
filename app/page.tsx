@@ -75,6 +75,12 @@ export default function Home() {
     [projects, query]
   );
 
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
+
   async function createProject(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!newTitle.trim()) return;
@@ -157,6 +163,7 @@ export default function Home() {
           <div className="breadcrumbs"><span>Workspace</span><span className="crumb-slash">/</span><strong>{activeNav}</strong></div>
           <div className="topbar-actions">
             <button className="help-button" onClick={() => setNotice("Your writing guide is coming soon.")}><CircleHelp size={17} /><span>Help</span></button>
+            <button className="help-button" onClick={logout} title="Sign out">Sign out</button>
             <div className="top-avatar">Z</div>
           </div>
         </header>
