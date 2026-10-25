@@ -1,11 +1,6 @@
 import { MongoClient, type Db } from "mongodb";
 
-const uri = process.env.MONGODB_URI;
 const dbName = process.env.MONGODB_DB || "scriptwriter";
-
-if (!uri) {
-  throw new Error("Please define MONGODB_URI in your environment variables.");
-}
 
 type MongoCache = {
   client: MongoClient | null;
@@ -20,6 +15,11 @@ declare global {
 const cache = global._mongoCache ?? (global._mongoCache = { client: null, promise: null });
 
 export async function getDb(): Promise<Db> {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error("Please define MONGODB_URI in your environment variables.");
+  }
+
   if (cache.client) return cache.client.db(dbName);
 
   if (!cache.promise) {
