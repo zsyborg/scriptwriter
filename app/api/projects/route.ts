@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { readSessionFromRequest } from "@/lib/auth";
+import { getActiveWriterSession } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  const session = readSessionFromRequest(request);
+  const session = await getActiveWriterSession(request);
   if (!session || session.role !== "writer" || !session.userId) return NextResponse.json({ error: "Please sign in as a writer." }, { status: 401 });
   try {
     const db = await getDb();
