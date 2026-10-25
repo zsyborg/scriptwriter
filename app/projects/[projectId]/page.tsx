@@ -20,6 +20,7 @@ export default function ProjectWorkspace() {
   const [sceneTitle, setSceneTitle] = useState("");
   const [newEpisodeTitle, setNewEpisodeTitle] = useState("");
   const [newSceneTitle, setNewSceneTitle] = useState("");
+  const [sceneTargetEpisodeId, setSceneTargetEpisodeId] = useState("");
   const [showEpisodeInput, setShowEpisodeInput] = useState(false);
   const [showSceneInput, setShowSceneInput] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -42,6 +43,7 @@ export default function ProjectWorkspace() {
         if (cancelled) return;
         setProject(projectData);
         setEpisodes(episodeData);
+        if (episodeData.length) setSceneTargetEpisodeId(episodeData[0]._id);
         if (episodeData.length) {
           const sceneResponses = await Promise.all(episodeData.map((episode: Episode) => fetch(`/api/episodes/${episode._id}/scenes`)));
           const sceneGroups = await Promise.all(sceneResponses.map((response) => response.ok ? response.json() : []));
@@ -114,8 +116,8 @@ export default function ProjectWorkspace() {
   async function addScene(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const title = newSceneTitle.trim();
-    if (!title || !episodes.length) return;
-    const response = await fetch(`/api/episodes/${episodes[0]._id}/scenes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }) });
+    if (!title || !episodes.length || !sceneTargetEpisodeId) return;
+    const response = await fetch(`/api/episodes/${sceneTargetEpisodeId}/scenes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }) });
     if (!response.ok) { setError("Could not create scene."); return; }
     const scene = await response.json();
     setScenes((current) => [...current, scene]);
@@ -148,8 +150,8 @@ export default function ProjectWorkspace() {
               {episodeScenes.map((scene, sceneIndex) => <button key={scene._id} className={`scene-link ${selectedScene === scene._id ? "selected" : ""}`} onClick={() => selectScene(scene)}><span className="scene-bullet" /><span>{scene.title}</span><small>{String(sceneIndex + 1).padStart(2, "0")}</small></button>)}
             </div>;
           })}
-          <button className="outline-add-scene" onClick={() => setShowSceneInput((value) => !value)} disabled={!episodes.length}><Plus size={15} /> Add scene</button>
-          {showSceneInput && <form className="inline-create-form" onSubmit={addScene}><input autoFocus value={newSceneTitle} onChange={(e) => setNewSceneTitle(e.target.value)} placeholder="Scene title" maxLength={120} required /><button type="submit" aria-label="Save scene"><Check size={15} /></button></form>}
+          <button className="outline-add-scene" onClick={() => { setSceneTargetEpisodeId((current) => current || episodes[0]?._id || ""); setShowSceneInput((value) => !value); }} disabled={!episodes.length}><Plus size={15} /> Add scene</button>
+          {showSceneInput && <form className="inline-create-form scene-create-form" onSubmit={addScene}><select aria-label="Episode for new scene" value={sceneTargetEpisodeId} onChange={(e) => setSceneTargetEpisodeId(e.target.value)} required>{episodes.map((episode) => <option key={episode._id} value={episode._id}>{episode.title}</option>)}</select><input autoFocus value={newSceneTitle} onChange={(e) => setNewSceneTitle(e.target.value)} placeholder="Scene title" maxLength={120} required /><button type="submit" aria-label="Save scene"><Check size={15} /></button></form>}
           <div className="outline-tools"><button onClick={() => setError("Character library is the next feature being built.")}><UsersRound size={16} /> Characters <span>→</span></button><button onClick={() => setError("Location library is the next feature being built.")}><MapPin size={16} /> Locations <span>→</span></button></div>
         </aside>
 
