@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDb();
-    const user = await db.collection("users").findOne({ username: username.toLowerCase(), active: { $ne: false } });
+    const user = await db.collection("users").findOne({ username: username.toLowerCase(), role: "writer", active: { $ne: false } });
     if (!user || typeof user.passwordHash !== "string" || !(await verifyPassword(password, user.passwordHash))) {
       return NextResponse.json({ error: "Incorrect username or password." }, { status: 401 });
     }
