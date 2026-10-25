@@ -1,8 +1,11 @@
 import { createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
 import type { NextRequest } from "next/server";
 
-const scrypt = promisify(scryptCallback);
+function deriveKey(password: string, salt: string, keyLength: number): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scryptCallback(password, salt, keyLength, (error, key) => error ? reject(error) : resolve(key as Buffer));
+  });
+}
 const COOKIE_NAME = "scriptwriter_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 
@@ -55,7 +58,7 @@ export function clearSessionCookie() {
 
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
-  const derived = (await scrypt(password, salt, 64)) as Buffer;
+  const derived = await deriveKey(password, salt, 64);
   return `scrypt:${salt}:${derived.toString("hex")}`;
 }
 
@@ -63,7 +66,7 @@ export async function verifyPassword(password: string, stored: string) {
   const [algorithm, salt, hash] = stored.split(":");
   if (algorithm !== "scrypt" || !salt || !hash) return false;
   const expected = Buffer.from(hash, "hex");
-  const actual = (await scrypt(password, salt, expected.length)) as Buffer;
+  const actual = await deriveKey(password, salt, expected.length);
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
