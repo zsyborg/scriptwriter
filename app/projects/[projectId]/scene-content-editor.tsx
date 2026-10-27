@@ -23,7 +23,7 @@ const root=ref.current;if(!root)return;
 const all=[...characters.map(item=>({item,kind:"characters" as Kind})),...locations.map(item=>({item,kind:"locations" as Kind})),...creatures.map(item=>({item,kind:"creatures" as Kind}))].filter(entry=>entry.item.name.trim()).sort((a,b)=>b.item.name.length-a.item.name.length);
 if(!all.length)return;
 const names=all.map(entry=>entry.item.name.split("").map(char=>"\\^$.*+?()[]{}|".includes(char)?"\\"+char:char).join(""));
-function makeMention"));
+
 const matcher=new RegExp("(?<![A-Za-z0-9_])(?:"+names.join("|")+")(?![A-Za-z0-9_])","giu");
 const byName=new Map(all.map(entry=>[entry.item.name.toLocaleLowerCase(),entry]));
 const selection=window.getSelection();let marker:HTMLSpanElement|null=null;
