@@ -20,29 +20,79 @@ const MODES = [
 
 type ThemeMode = (typeof MODES)[number]["id"];
 const STORAGE_KEY = "scriptwriter-color-mode";
+const isThemeMode = (value: unknown): value is ThemeMode =>
+  typeof value === "string" && MODES.some((item) => item.id === value);
 
 export default function ThemeModeControl() {
   const [mode, setMode] = useState<ThemeMode>("light");
   const [authenticated, setAuthenticated] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-    const initial = MODES.some((item) => item.id === stored) ? stored! : "light";
+    let cancelled = false;
+    const localMode = window.localStorage.getItem(STORAGE_KEY);
+    const initial: ThemeMode = isThemeMode(localMode) ? localMode : "light";
     setMode(initial);
     document.documentElement.dataset.theme = initial;
-    let cancelled = false;
-    fetch("/api/auth/me").then((response) => response.json()).then((data) => {
-      if (!cancelled) setAuthenticated(Boolean(data.user));
-    }).catch(() => { if (!cancelled) setAuthenticated(false); });
+
+    async function loadAccountPreference() {
+      try {
+        const meResponse = await fetch("/api/auth/me", { credentials: "same-origin", cache: "no-store" });
+        const me = await meResponse.json();
+        if (cancelled || !me.user) {
+          if (!cancelled) setAuthenticated(false);
+          return;
+        }
+        setAuthenticated(true);
+        const preferenceResponse = await fetch("/api/user/preferences", { credentials: "same-origin", cache: "no-store" });
+        if (!preferenceResponse.ok) return;
+        const preference = await preferenceResponse.json();
+        if (cancelled) return;
+        if (isThemeMode(preference.colorMode)) {
+          setMode(preference.colorMode);
+          document.documentElement.dataset.theme = preference.colorMode;
+          window.localStorage.setItem(STORAGE_KEY, preference.colorMode);
+        } else if (isThemeMode(localMode)) {
+          // Migrate an existing browser-only preference to the signed-in account.
+          await fetch("/api/user/preferences", {
+            method: "PATCH",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ colorMode: localMode }),
+          });
+        }
+      } catch {
+        if (!cancelled) setAuthenticated(false);
+      }
+    }
+
+    void loadAccountPreference();
     return () => { cancelled = true; };
   }, []);
 
-  function changeMode(value: string) {
-    if (!MODES.some((item) => item.id === value)) return;
-    const next = value as ThemeMode;
-    setMode(next);
-    document.documentElement.dataset.theme = next;
-    window.localStorage.setItem(STORAGE_KEY, next);
+  async function changeMode(value: string) {
+    if (!isThemeMode(value) || saving) return;
+    const previous = mode;
+    setMode(value);
+    document.documentElement.dataset.theme = value;
+    window.localStorage.setItem(STORAGE_KEY, value);
+    setSaving(true);
+    try {
+      const response = await fetch("/api/user/preferences", {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ colorMode: value }),
+      });
+      if (!response.ok) throw new Error("Could not save preference");
+    } catch {
+      // Keep the selection active in this browser; account sync can be retried later.
+      setMode(value);
+      document.documentElement.dataset.theme = value;
+    } finally {
+      setSaving(false);
+    }
+    void previous;
   }
 
   if (!authenticated) return null;
@@ -50,7 +100,7 @@ export default function ThemeModeControl() {
     <Palette size={16} aria-hidden="true" />
     <label htmlFor="theme-mode-select">Color mode</label>
     <span className="theme-swatch" style={{ background: MODES.find((item) => item.id === mode)?.color }} aria-hidden="true" />
-    <select id="theme-mode-select" value={mode} onChange={(event) => changeMode(event.target.value)} aria-label="Choose workspace color mode">
+    <select id="theme-mode-select" value={mode} onChange={(event) => void changeMode(event.target.value)} aria-label="Choose workspace color mode" disabled={saving}>
       {MODES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
     </select>
   </div>;
