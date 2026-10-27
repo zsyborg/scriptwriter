@@ -37,7 +37,7 @@ event.preventDefault();
 const all=[...characters.map(item=>({item,kind:"characters" as Kind})),...locations.map(item=>({item,kind:"locations" as Kind})),...creatures.map(item=>({item,kind:"creatures" as Kind}))].filter(entry=>entry.item.name.trim()).sort((a,b)=>b.item.name.length-a.item.name.length);
 const byName=new Map(all.map(entry=>[entry.item.name.toLocaleLowerCase(),entry]));
 const fragment=document.createDocumentFragment();
-if(sourceHtml){
+if(sourceHtml&&/data-entity-id\s*=/.test(sourceHtml)){
 const parsed=new DOMParser().parseFromString(sourceHtml,"text/html");
 const appendNode=(node:Node,parent:Node)=>{
 if(node.nodeType===Node.TEXT_NODE){parent.appendChild(document.createTextNode(node.textContent||""));return;}
