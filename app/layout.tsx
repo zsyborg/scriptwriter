@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./story.css";
+import ThemeModeControl from "./theme-mode-control";
 
 export const metadata: Metadata = {
   title: "Scriptwriter — Stories, brought to life",
@@ -17,7 +18,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><ThemeModeControl />{children}</body>
     </html>
   );
 }

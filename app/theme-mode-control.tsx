@@ -1,0 +1,57 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Palette } from "lucide-react";
+
+const MODES = [
+  { id: "light", label: "Light", color: "#f8f7f4" },
+  { id: "dark", label: "Dark", color: "#252525" },
+  { id: "red", label: "Red", color: "#e53935" },
+  { id: "orange", label: "Orange", color: "#f57c00" },
+  { id: "yellow", label: "Yellow", color: "#fdd835" },
+  { id: "green", label: "Green", color: "#43a047" },
+  { id: "blue", label: "Blue", color: "#1e88e5" },
+  { id: "purple", label: "Purple", color: "#8e24aa" },
+  { id: "pink", label: "Pink", color: "#ec407a" },
+  { id: "brown", label: "Brown", color: "#795548" },
+  { id: "black", label: "Black", color: "#111111" },
+  { id: "gray", label: "Gray", color: "#78909c" },
+] as const;
+
+type ThemeMode = (typeof MODES)[number]["id"];
+const STORAGE_KEY = "scriptwriter-color-mode";
+
+export default function ThemeModeControl() {
+  const [mode, setMode] = useState<ThemeMode>("light");
+  const [authenticated, setAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
+    const initial = MODES.some((item) => item.id === stored) ? stored! : "light";
+    setMode(initial);
+    document.documentElement.dataset.theme = initial;
+    let cancelled = false;
+    fetch("/api/auth/me").then((response) => response.json()).then((data) => {
+      if (!cancelled) setAuthenticated(Boolean(data.user));
+    }).catch(() => { if (!cancelled) setAuthenticated(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  function changeMode(value: string) {
+    if (!MODES.some((item) => item.id === value)) return;
+    const next = value as ThemeMode;
+    setMode(next);
+    document.documentElement.dataset.theme = next;
+    window.localStorage.setItem(STORAGE_KEY, next);
+  }
+
+  if (!authenticated) return null;
+  return <div className="theme-mode-control">
+    <Palette size={16} aria-hidden="true" />
+    <label htmlFor="theme-mode-select">Color mode</label>
+    <span className="theme-swatch" style={{ background: MODES.find((item) => item.id === mode)?.color }} aria-hidden="true" />
+    <select id="theme-mode-select" value={mode} onChange={(event) => changeMode(event.target.value)} aria-label="Choose workspace color mode">
+      {MODES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+    </select>
+  </div>;
+}
