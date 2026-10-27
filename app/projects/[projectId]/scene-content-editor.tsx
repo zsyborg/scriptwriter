@@ -7,6 +7,18 @@ function html(s:string){return /data-entity-id=/.test(s)||/<br\s*\/?\s*>|<div\b/
 export default function SceneContentEditor({value,characters,locations,creatures,onChange}:{value:string;characters:Item[];locations:Item[];creatures:Item[];onChange:(v:string)=>void}){
 const ref=useRef<HTMLDivElement>(null);const [picker,setPicker]=useState<Kind|null>(null);const [search,setSearch]=useState("");const [details,setDetails]=useState<{item:Item;kind:Kind}|null>(null);
 useEffect(()=>{if(ref.current&&document.activeElement!==ref.current&&ref.current.innerHTML!==html(value||""))ref.current.innerHTML=html(value||"");},[value]);
+useEffect(()=>{
+const root=ref.current;if(!root)return;
+let contentChanged=false;
+root.querySelectorAll<HTMLElement>("[data-entity-id][data-entity-type]").forEach(node=>{
+const entityType=node.dataset.entityType;
+const kind:Kind=entityType==="character"?"characters":entityType==="creature"?"creatures":"locations";
+const library=kind==="characters"?characters:kind==="creatures"?creatures:locations;
+const item=library.find(entry=>entry._id===node.dataset.entityId);
+if(item&&node.textContent!==item.name){node.textContent=item.name;node.dataset.entityName=item.name;contentChanged=true;}
+});
+if(contentChanged)onChange(root.innerHTML);
+},[characters,locations,creatures,onChange]);
 function changed(){if(ref.current)onChange(ref.current.innerHTML);}
 function insert(item:Item,kind:Kind){const root=ref.current;if(!root)return;root.focus();const node=document.createElement("span");node.className="story-entity-mention";node.contentEditable="false";node.dataset.entityType=kind==="characters"?"character":kind==="creatures"?"creature":"location";node.dataset.entityId=item._id;node.dataset.entityName=item.name;node.title="Click to view saved details";node.textContent=item.name;const sel=window.getSelection();if(sel?.rangeCount&&root.contains(sel.anchorNode)){const range=sel.getRangeAt(0);range.deleteContents();range.insertNode(node);const space=document.createTextNode(" ");node.after(space);range.setStartAfter(space);range.collapse(true);sel.removeAllRanges();sel.addRange(range);}else root.append(node,document.createTextNode(" "));changed();setPicker(null);setSearch("");}
 function clickMention(event:React.MouseEvent<HTMLDivElement>){const node=(event.target as HTMLElement).closest<HTMLElement>("[data-entity-id][data-entity-type]");if(!node)return;const kind:Kind=node.dataset.entityType==="character"?"characters":node.dataset.entityType==="creature"?"creatures":"locations";const item=(kind==="characters"?characters:kind==="creatures"?creatures:locations).find(x=>x._id===node.dataset.entityId);if(item)setDetails({item,kind});}
