@@ -21,18 +21,53 @@ function changed(){if(ref.current)onChange(ref.current.innerHTML);}
 function makeMention(item:Item,kind:Kind){const node=document.createElement("span");node.className="story-entity-mention";node.contentEditable="false";node.dataset.entityType=kind==="characters"?"character":kind==="creatures"?"creature":"location";node.dataset.entityId=item._id;node.dataset.entityName=item.name;node.title="Click to view saved details";node.textContent=item.name;return node;}
 function insert(item:Item,kind:Kind){const root=ref.current;if(!root)return;root.focus();const node=makeMention(item,kind);const sel=window.getSelection();if(sel?.rangeCount&&root.contains(sel.anchorNode)){const range=sel.getRangeAt(0);range.deleteContents();range.insertNode(node);const space=document.createTextNode(" ");node.after(space);range.setStartAfter(space);range.collapse(true);sel.removeAllRanges();sel.addRange(range);}else root.append(node,document.createTextNode(" "));changed();setPicker(null);setSearch("");}
 function handlePaste(event:React.ClipboardEvent<HTMLDivElement>){
-const root=ref.current;if(!root)return;const clipboard=event.clipboardData;const plain=clipboard.getData("text/plain");if(!plain)return;
+const root=ref.current;if(!root)return;
+const clipboard=event.clipboardData;
+const htmlData=clipboard.getData("text/html");
+const plainData=clipboard.getData("text/plain");
+let plain=plainData;
+let sourceHtml="";
+if(htmlData){
+const parsed=new DOMParser().parseFromString(htmlData,"text/html");
+sourceHtml=parsed.body.innerHTML;
+if(!plain)plain=parsed.body.textContent||"";
+}
+if(!plain&&!sourceHtml)return;
 event.preventDefault();
 const all=[...characters.map(item=>({item,kind:"characters" as Kind})),...locations.map(item=>({item,kind:"locations" as Kind})),...creatures.map(item=>({item,kind:"creatures" as Kind}))].filter(entry=>entry.item.name.trim()).sort((a,b)=>b.item.name.length-a.item.name.length);
+const byName=new Map(all.map(entry=>[entry.item.name.toLocaleLowerCase(),entry]));
+const fragment=document.createDocumentFragment();
+if(sourceHtml){
+const parsed=new DOMParser().parseFromString(sourceHtml,"text/html");
+const appendNode=(node:Node,parent:Node)=>{
+if(node.nodeType===Node.TEXT_NODE){parent.appendChild(document.createTextNode(node.textContent||""));return;}
+if(!(node instanceof HTMLElement)){node.childNodes.forEach(child=>appendNode(child,parent));return;}
+const id=node.dataset.entityId;const type=node.dataset.entityType;
+if(id&&type){
+const kind:Kind=type==="character"?"characters":type==="creature"?"creatures":"locations";
+const item=libraries[kind].find(entry=>entry._id===id)||byName.get((node.dataset.entityName||node.textContent||"").trim().toLocaleLowerCase())?.item;
+if(item){parent.appendChild(makeMention(item,kind));return;}
+}
+const name=(node.textContent||"").trim();
+const match=byName.get(name.toLocaleLowerCase());
+if(match&&node.childElementCount===0){parent.appendChild(makeMention(match.item,match.kind));return;}
+if(node.tagName==="BR"){parent.appendChild(document.createElement("br"));return;}
+if(["DIV","P"].includes(node.tagName)&&parent.hasChildNodes())parent.appendChild(document.createElement("br"));
+node.childNodes.forEach(child=>appendNode(child,parent));
+if(["DIV","P"].includes(node.tagName))parent.appendChild(document.createElement("br"));
+};
+parsed.body.childNodes.forEach(node=>appendNode(node,fragment));
+}else{
 const matcher=all.length?new RegExp(all.map(entry=>entry.item.name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|"),"giu"):null;
-const fragment=document.createDocumentFragment();let last=0;let match:RegExpExecArray|null;
+let last=0;let match:RegExpExecArray|null;
 if(matcher){while((match=matcher.exec(plain))!==null){const start=match.index,end=start+match[0].length;
 if(start>last)appendPlain(fragment,plain.slice(last,start));
-const found=all.find(entry=>entry.item.name.toLocaleLowerCase()===match![0].toLocaleLowerCase());
+const found=byName.get(match[0].toLocaleLowerCase());
 if(found)fragment.append(makeMention(found.item,found.kind));else fragment.append(document.createTextNode(match[0]));
 last=end;if(matcher.lastIndex===start)matcher.lastIndex++;
 }}
 if(last<plain.length)appendPlain(fragment,plain.slice(last));
+}
 const selection=window.getSelection();let range:Range|undefined;
 if(selection?.rangeCount&&root.contains(selection.anchorNode))range=selection.getRangeAt(0);
 if(!range){range=document.createRange();range.selectNodeContents(root);range.collapse(false);}
