@@ -24,7 +24,7 @@ const all=[...characters.map(item=>({item,kind:"characters" as Kind})),...locati
 if(!all.length)return;
 const names=all.map(entry=>entry.item.name.split("").map(char=>"\\^$.*+?()[]{}|".includes(char)?"\\"+char:char).join(""));
 function makeMention"));
-const matcher=new RegExp("(?<![\\\\p{L}\\\\p{N}_])(?:"+names.join("|")+")(?![\\\\p{L}\\\\p{N}_])","giu");
+const matcher=new RegExp("(?<![A-Za-z0-9_])(?:"+names.join("|")+")(?![A-Za-z0-9_])","giu");
 const byName=new Map(all.map(entry=>[entry.item.name.toLocaleLowerCase(),entry]));
 const selection=window.getSelection();let marker:HTMLSpanElement|null=null;
 if(!finalize&&selection?.rangeCount&&root.contains(selection.anchorNode)){
