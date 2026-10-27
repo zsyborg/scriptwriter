@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./story.css";
+import "./theme-palettes.css";
 import ThemeModeControl from "./theme-mode-control";
 
 export const metadata: Metadata = {
