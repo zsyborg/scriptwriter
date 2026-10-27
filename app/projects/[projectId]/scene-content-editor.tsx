@@ -22,7 +22,7 @@ function autoLinkNames(finalize=false){
 const root=ref.current;if(!root)return;
 const all=[...characters.map(item=>({item,kind:"characters" as Kind})),...locations.map(item=>({item,kind:"locations" as Kind})),...creatures.map(item=>({item,kind:"creatures" as Kind}))].filter(entry=>entry.item.name.trim()).sort((a,b)=>b.item.name.length-a.item.name.length);
 if(!all.length)return;
-const names=all.map(entry=>entry.item.name.replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\$&"));
+const names=all.map(entry=>entry.item.name.split("").map(char=>"\\^$.*+?()[]{}|".includes(char)?"\\"+char:char).join(""));
 function makeMention"));
 const matcher=new RegExp("(?<![\\\\p{L}\\\\p{N}_])(?:"+names.join("|")+")(?![\\\\p{L}\\\\p{N}_])","giu");
 const byName=new Map(all.map(entry=>[entry.item.name.toLocaleLowerCase(),entry]));
