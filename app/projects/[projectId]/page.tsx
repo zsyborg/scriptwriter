@@ -189,7 +189,8 @@ export default function ProjectWorkspace() {
       </header>
       <div className="story-layout">
         <aside className="story-outline">
-          <div className="outline-header"><div><span className="outline-kicker">STORY STRUCTURE</span><h1>{project?.title || "Your story"}</h1></div><button type="button" className="project-export-button" onClick={exportProject} title="Export project ZIP" aria-label="Export project ZIP"><Download size={15} /></button></div>\n          <div className="project-export-options"><strong>Project export</strong><span>Select episodes below, or leave all unchecked to export every episode.</span></div>
+          <div className="outline-header"><div><span className="outline-kicker">STORY STRUCTURE</span><h1>{project?.title || "Your story"}</h1></div><button type="button" className="project-export-button" onClick={exportProject} title="Export project ZIP" aria-label="Export project ZIP"><Download size={15} /></button></div>
+          <div className="project-export-options"><strong>Project export</strong><span>Select episodes below, or leave all unchecked to export every episode.</span></div>
           <p className="outline-description">{project?.description || "Every scene is another piece of your world."}</p>
           <div className="outline-section-title"><span>EPISODES</span><button aria-label="Add episode" onClick={() => setShowEpisodeInput((value) => !value)}><Plus size={16} /></button></div>
           {showEpisodeInput && <form className="inline-create-form" onSubmit={addEpisode}><input autoFocus value={newEpisodeTitle} onChange={(e) => setNewEpisodeTitle(e.target.value)} placeholder="Episode title" maxLength={120} required /><button type="submit" aria-label="Save episode"><Check size={15} /></button></form>}
