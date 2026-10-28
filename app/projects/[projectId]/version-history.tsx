@@ -102,7 +102,7 @@ function SceneContentDiff({ before, after }: { before: unknown; after: unknown }
   if (!hasChanges) return <p className="version-diff-empty">No text changes detected in this revision.</p>;
   return (
     <div className="version-scene-diff">
-      <p className="version-diff-note">Only changed passages are shown. Unchanged script text is hidden.</p>
+      {/* <p className="version-diff-note">Only changed passages are shown. Unchanged script text is hidden.</p> */}
       {parts.filter((part) => part.type !== "same").map((part, index) => (
         <section className={"version-diff-change version-diff-" + part.type} key={index}>
           <strong>{part.type === "removed" ? "− Removed" : "+ Added"}</strong>
