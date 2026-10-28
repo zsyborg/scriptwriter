@@ -10,6 +10,7 @@ export function htmlToReadableText(html: unknown): string {
 export type ExportScene = { title: string; content?: unknown; order?: number };
 export type ExportEpisode = { title: string; scenes: ExportScene[] };
 export type ExportLayout = "readable" | "screenplay";
+export type ExportOptions = { titlePage?: boolean; author?: string; pageBreaks?: boolean };
 function formatBody(body: string, layout: ExportLayout): string {
   if (layout === "readable") return body || "[No scene content]";
   if (!body) return "[No scene content]";
@@ -30,21 +31,20 @@ function formatBody(body: string, layout: ExportLayout): string {
   }
   return output.join("\n").replace(/\n{3,}/g, "\n\n").trim() || "[No scene content]";
 }
-export function prepareSceneText(scene: ExportScene, index?: number, layout: ExportLayout = "readable"): string {
+export function prepareSceneText(scene: ExportScene, index?: number, layout: ExportLayout = "readable", options: ExportOptions = {}): string {
   const title = scene.title?.trim() || "Untitled scene";
   const body = formatBody(htmlToReadableText(scene.content), layout);
   const heading = index === undefined ? title.toUpperCase() : "SCENE " + (index + 1) + ": " + title.toUpperCase();
-  if (layout === "screenplay") return heading + "\n\n" + body;
-  return heading + "\n\n" + body;
+  const sceneText = heading + "\n\n" + body;
+  return options.pageBreaks && index !== undefined && index > 0 ? "\f" + sceneText : sceneText;
 }
-export function prepareEpisodeText(episode: ExportEpisode, projectTitle: string, layout: ExportLayout = "readable"): string {
+export function prepareEpisodeText(episode: ExportEpisode, projectTitle: string, layout: ExportLayout = "readable", options: ExportOptions = {}): string {
   const orderedScenes = [...episode.scenes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  const lines = layout === "screenplay"
-    ? [(projectTitle || "Untitled story").trim().toUpperCase(), "", (episode.title || "Untitled episode").trim().toUpperCase(), "", "FADE IN:", ""]
-    : [(projectTitle || "Untitled story").trim(), (episode.title || "Untitled episode").trim(), "", "=".repeat(56), ""];
+  const titleLines = options.titlePage === false ? [] : ["TITLE PAGE", "", (projectTitle || "Untitled story").trim(), (episode.title || "Untitled episode").trim(), ...(options.author?.trim() ? ["", "Written by", options.author.trim()] : []), "\f"];
+  const lines = [...titleLines, ...(layout === "screenplay" ? [(projectTitle || "Untitled story").trim().toUpperCase(), "", (episode.title || "Untitled episode").trim().toUpperCase(), "", "FADE IN:", ""] : [(projectTitle || "Untitled story").trim(), (episode.title || "Untitled episode").trim(), "", "=".repeat(56), ""])];
   orderedScenes.forEach((scene, index) => {
     if (index > 0) lines.push("", layout === "screenplay" ? "                                      * * *" : "-".repeat(56), "");
-    lines.push(prepareSceneText(scene, index, layout));
+    lines.push(prepareSceneText(scene, index, layout, options));
   });
   if (!orderedScenes.length) lines.push("[This episode has no scenes yet.]");
   if (layout === "screenplay") lines.push("", "FADE OUT.");
