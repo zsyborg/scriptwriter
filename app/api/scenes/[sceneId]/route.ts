@@ -66,7 +66,23 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       { returnDocument: "after" }
     );
     if (!result) return NextResponse.json({ error: "Scene not found." }, { status: 404 });
-    await recordVersion(db, { projectId: String(existingScene.projectId), entityType: "scene", entityId: sceneId, entityName: String(result.title || existingScene.title || "Untitled scene"), actor: session, before: existingScene, after: result });
+
+    // Saving the script is the primary operation. A history-write failure must never
+    // turn a successful database update into a failed autosave response.
+    try {
+      await recordVersion(db, {
+        projectId: String(existingScene.projectId),
+        entityType: "scene",
+        entityId: sceneId,
+        entityName: String(result.title || existingScene.title || "Untitled scene"),
+        actor: session,
+        before: existingScene,
+        after: result,
+      });
+    } catch (historyError) {
+      console.error("Scene saved, but revision history could not be recorded:", historyError);
+    }
+
     return NextResponse.json({ ...result, _id: result._id.toString() });
   } catch (error) {
     console.error("Save scene failed:", error);
