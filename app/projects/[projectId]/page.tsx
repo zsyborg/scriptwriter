@@ -144,7 +144,17 @@ export default function ProjectWorkspace() {
   }
 
 
-  async function exportProject() {\n    try {\n      const params = new URLSearchParams({ projectId, format: exportFormat, layout: exportLayout, author: exportAuthor, titlePage: String(exportTitlePage), pageBreaks: "true" });\n      if (selectedExportEpisodes.length) params.set("episodeIds", selectedExportEpisodes.join(","));\n      const response = await fetch("/api/export?" + params.toString());\n      if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.error || "Could not export this project."); }\n      const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = (project?.title || "project").replace(/[^a-z0-9.-]+/gi, "-") + "-export.zip"; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url); setError("");\n    } catch (err) { setError(err instanceof Error ? err.message : "Could not export this project."); }\n  }\n\n  async function exportText(scope: "scene" | "episode", id: string) {
+  async function exportProject() {
+    try {
+      const params = new URLSearchParams({ projectId, format: exportFormat, layout: exportLayout, author: exportAuthor, titlePage: String(exportTitlePage), pageBreaks: "true" });
+      if (selectedExportEpisodes.length) params.set("episodeIds", selectedExportEpisodes.join(","));
+      const response = await fetch("/api/export?" + params.toString());
+      if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.error || "Could not export this project."); }
+      const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = (project?.title || "project").replace(/[^a-z0-9.-]+/gi, "-") + "-export.zip"; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url); setError("");
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not export this project."); }
+  }
+
+  async function exportText(scope: "scene" | "episode", id: string) {
     try {
       const params = new URLSearchParams({ [scope + "Id"]: id, format: exportFormat, layout: exportLayout, author: exportAuthor, titlePage: String(exportTitlePage), pageBreaks: String(exportScenePageBreaks) });
       if (scope === "episode" && selectedExportScenes.length) params.set("sceneIds", selectedExportScenes.join(","));
