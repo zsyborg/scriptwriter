@@ -47,18 +47,27 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (!ownedProject) return NextResponse.json({ error: "Scene not found." }, { status: 404 });
     if(typeof update.content==="string"){
       const mentions=[...update.content.matchAll(/data-entity-type="(character|location)" data-entity-id="([a-f0-9]{24})"/gi)];
-      for(const mention of mentions){const collection=mention[1].toLowerCase()==="character"?"characters":"locations";const found=await db.collection(collection).findOne({_id:new ObjectId(mention[2]),projectId:existingScene.projectId},{projection:{_id:1}});if(!found)return NextResponse.json({error:"A linked character or location does not belong to this project."},{status:400});}
+      // Older records may store projectId as an ObjectId while newer records use a string.
+      // Compare normalized IDs so valid links are not rejected because of BSON type differences.
+      for(const mention of mentions){
+        const collection=mention[1].toLowerCase()==="character"?"characters":"locations";
+        const found=await db.collection(collection).findOne({_id:new ObjectId(mention[2])},{projection:{_id:1,projectId:1}});
+        if(!found || String(found.projectId) !== String(existingScene.projectId)) {
+          console.warn("Rejected scene entity reference:", {sceneId, entityType:mention[1], entityId:mention[2], sceneProjectId:String(existingScene.projectId), entityProjectId:found ? String(found.projectId) : null});
+          return NextResponse.json({error:"A linked character or location does not belong to this project."},{status:400});
+        }
+      }
       const cids=[...new Set(mentions.filter(m=>m[1].toLowerCase()==="character").map(m=>m[2]))];const lids=[...new Set(mentions.filter(m=>m[1].toLowerCase()==="location").map(m=>m[2]))];
       if(cids.length)update.characterIds=[...new Set([...(update.characterIds??((existingScene.characterIds as string[])||[])),...cids])];
       if(lids.length)update.locationIds=[...new Set([...(update.locationIds??((existingScene.locationIds as string[])||[])),...lids])];
     }
     if (update.characterIds !== undefined && update.characterIds.length) {
-      const count = await db.collection("characters").countDocuments({ _id: { $in: update.characterIds.map((id) => new ObjectId(id)) }, projectId: existingScene.projectId });
-      if (count !== update.characterIds.length) return NextResponse.json({ error: "One or more characters do not belong to this project." }, { status: 400 });
+      const linkedCharacters = await db.collection("characters").find({ _id: { $in: update.characterIds.map((id) => new ObjectId(id)) } }, { projection: { _id: 1, projectId: 1 } }).toArray();
+      if (linkedCharacters.length !== update.characterIds.length || linkedCharacters.some((item) => String(item.projectId) !== String(existingScene.projectId))) return NextResponse.json({ error: "One or more characters do not belong to this project." }, { status: 400 });
     }
     if (update.locationIds !== undefined && update.locationIds.length) {
-      const count = await db.collection("locations").countDocuments({ _id: { $in: update.locationIds.map((id) => new ObjectId(id)) }, projectId: existingScene.projectId });
-      if (count !== update.locationIds.length) return NextResponse.json({ error: "One or more locations do not belong to this project." }, { status: 400 });
+      const linkedLocations = await db.collection("locations").find({ _id: { $in: update.locationIds.map((id) => new ObjectId(id)) } }, { projection: { _id: 1, projectId: 1 } }).toArray();
+      if (linkedLocations.length !== update.locationIds.length || linkedLocations.some((item) => String(item.projectId) !== String(existingScene.projectId))) return NextResponse.json({ error: "One or more locations do not belong to this project." }, { status: 400 });
     }
     const result = await db.collection("scenes").findOneAndUpdate(
       { _id: new ObjectId(sceneId) },
