@@ -31,6 +31,7 @@ export default function ProjectWorkspace() {
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState("All changes saved");
   const [error, setError] = useState("");
+  const [exportFormat, setExportFormat] = useState<"txt" | "pdf" | "docx">("txt");
   const [characters, setCharacters] = useState<LibraryItem[]>([]);
   const [locations, setLocations] = useState<LibraryItem[]>([]);
   const [creatures, setCreatures] = useState<LibraryItem[]>([]);
@@ -139,11 +140,11 @@ export default function ProjectWorkspace() {
 
   async function exportText(scope: "scene" | "episode", id: string) {
     try {
-      const response = await fetch("/api/export?" + scope + "Id=" + encodeURIComponent(id));
+      const response = await fetch("/api/export?" + scope + "Id=" + encodeURIComponent(id) + "&format=" + exportFormat);
       if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.error || "Could not export this script."); }
       const blob = await response.blob();
       const disposition = response.headers.get("Content-Disposition") || "";
-      const filename = disposition.match(/filename="([^"]+)"/i)?.[1] || ("script-" + scope + ".txt");
+      const filename = disposition.match(/filename="([^"]+)"/i)?.[1] || ("script-" + scope + "." + exportFormat);
       const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = filename;
       document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url); setError("");
     } catch (err) { setError(err instanceof Error ? err.message : "Could not export this script."); }
@@ -178,7 +179,7 @@ export default function ProjectWorkspace() {
           {episodes.map((episode, index) => {
             const episodeScenes = scenes.filter((scene) => scene.episodeId === episode._id);
             return <div className="episode-group" key={episode._id}>
-              <div className="episode-heading"><span className="episode-number">{String(index + 1).padStart(2, "0")}</span><span className="episode-heading-title">{episode.title}</span><button type="button" className="episode-export-button" title={"Export " + episode.title + " as TXT"} aria-label={"Export " + episode.title + " as TXT"} onClick={() => exportText("episode", episode._id)}><Download size={13} /></button><ChevronDown size={14} /></div>
+              <div className="episode-heading"><span className="episode-number">{String(index + 1).padStart(2, "0")}</span><span className="episode-heading-title">{episode.title}</span><button type="button" className="episode-export-button" title={"Export " + episode.title + " as " + exportFormat.toUpperCase()} aria-label={"Export " + episode.title + " as " + exportFormat.toUpperCase()} onClick={() => exportText("episode", episode._id)}><Download size={13} /></button><ChevronDown size={14} /></div>
               {episodeScenes.map((scene, sceneIndex) => <button key={scene._id} className={`scene-link ${selectedScene === scene._id ? "selected" : ""}`} onClick={() => selectScene(scene)}><span className="scene-bullet" /><span>{scene.title}</span><small>{String(sceneIndex + 1).padStart(2, "0")}</small></button>)}
             </div>;
           })}
@@ -190,7 +191,7 @@ export default function ProjectWorkspace() {
         <section className="writing-room">
           {error && <div className="workspace-error" role="status">{error}<button onClick={() => setError("")}>Dismiss</button></div>}
           {currentScene ? <>
-            <div className="editor-topline"><div><span className="editor-label">SCENE EDITOR</span><span className="editor-separator">·</span><span className="editor-time"><Clock3 size={13} /> Autosave on</span></div><div className="editor-actions"><VersionHistory projectId={projectId} entityType="scene" entityId={currentScene._id} /><button type="button" className="export-text-button" onClick={() => exportText("scene", currentScene._id)}><Download size={15} /> Export Scene</button><button className="save-now" onClick={() => saveScene(currentScene._id, sceneTitle, draft)} disabled={saving}><Save size={15} /> Save</button></div></div>
+            <div className="editor-topline"><div><span className="editor-label">SCENE EDITOR</span><span className="editor-separator">·</span><span className="editor-time"><Clock3 size={13} /> Autosave on</span></div><div className="editor-actions"><VersionHistory projectId={projectId} entityType="scene" entityId={currentScene._id} /><label className="export-format-control"><span>Format</span><select aria-label="Export format" value={exportFormat} onChange={(event) => setExportFormat(event.target.value as "txt" | "pdf" | "docx")}><option value="txt">TXT</option><option value="pdf">PDF</option><option value="docx">DOCX</option></select></label><button type="button" className="export-text-button" onClick={() => exportText("scene", currentScene._id)}><Download size={15} /> Export Scene</button><button className="save-now" onClick={() => saveScene(currentScene._id, sceneTitle, draft)} disabled={saving}><Save size={15} /> Save</button></div></div>
             <input className="scene-title-input" aria-label="Scene title" value={sceneTitle} maxLength={120} onChange={(e) => { setSceneTitle(e.target.value); setSaveState("Unsaved changes"); if (timer.current) clearTimeout(timer.current); const value = e.target.value; if (currentScene) timer.current = setTimeout(() => saveScene(currentScene._id, value, draft), 800); }} />
             <section className="scene-reference-panel" aria-label="Scene references">
               <div className="scene-reference-group"><strong><UsersRound size={14} /> Characters</strong>
