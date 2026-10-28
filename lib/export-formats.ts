@@ -1,6 +1,20 @@
 import { Buffer } from "node:buffer";
 function asciiSafe(value: string): string { return value.normalize("NFKD").replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/[—–]/g, "-").replace(/…/g, "...").replace(/[^\x20-\x7E]/g, "?"); }
-function wrapLine(line: string, max = 88): string[] { const words=line.split(/\s+/).filter(Boolean); if(!words.length)return [""]; const out:string[]=[];let current="";for(const word of words){if(current&&(current+" "+word).length>max){out.push(current);current=word;}else current=current?current+" "+word:word;}if(current)out.push(current);return out; }
+function wrapLine(line: string, max = 88): string[] {
+ const indent = line.match(/^\s*/)?.[0] ?? "";
+ const body = line.slice(indent.length);
+ if (!body.trim()) return [""];
+ const width = Math.max(12, max - indent.length);
+ const words = body.split(/\s+/).filter(Boolean);
+ const out: string[] = [];
+ let current = "";
+ for (const word of words) {
+   if (current && (current + " " + word).length > width) { out.push(indent + current); current = word; }
+   else current = current ? current + " " + word : word;
+ }
+ if (current) out.push(indent + current);
+ return out;
+}
 export function createPdf(text: string): Buffer {
  const pages:string[][]=[];let current:string[]=[];for(const rawLine of text.split(/\r?\n/)){if(rawLine==="\f"){pages.push(current);current=[];continue;}for(const line of wrapLine(asciiSafe(rawLine))){current.push(line);if(current.length>=48){pages.push(current);current=[];}}}if(current.length||!pages.length)pages.push(current);
  const objects:string[]=["<< /Type /Catalog /Pages 2 0 R >>","","<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"];const pageIds:number[]=[];
