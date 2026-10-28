@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { getActiveWriterSession } from "@/lib/auth";
+import { recordVersion } from "@/lib/versioning";
 export const runtime = "nodejs";
 type Context = { params: Promise<{ projectId: string }> };
 export async function GET(request: NextRequest, context: Context) {
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest, context: Context) {
  const fields:Record<string,string>={name}; for(const key of ["description","details","notes"]) { if(body[key]!==undefined) { if(typeof body[key]!=="string"||(body[key] as string).length>3000) return NextResponse.json({error:key+" must be text up to 3000 characters."},{status:400}); fields[key]=(body[key] as string).trim(); } }
  if(await db.collection("locations").findOne({projectId,name})) return NextResponse.json({error:"A location with this name already exists."},{status:409});
  const now=new Date(); const item={projectId,...fields,createdAt:now,updatedAt:now}; const result=await db.collection("locations").insertOne(item);
+ await recordVersion(db,{projectId,entityType:"location",entityId:result.insertedId.toString(),entityName:name,actor:session,before:null,after:item,action:"created"});
  return NextResponse.json({...item,_id:result.insertedId.toString()},{status:201});
  } catch(e) { console.error("Create locations failed:",e); return NextResponse.json({error:"Could not create location."},{status:503}); }
 }

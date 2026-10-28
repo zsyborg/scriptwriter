@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, Check, ChevronDown, Clock3, FilePlus2, MapPin, Plus, Save, UsersRound, Sparkles } from "lucide-react";
 import WorldLibrary from "./world-library";
 import SceneContentEditor from "./scene-content-editor";
+import VersionHistory from "./version-history";
 
 type Project = { _id: string; title: string; description?: string };
 type Episode = { _id: string; title: string; order: number };
@@ -177,7 +178,7 @@ export default function ProjectWorkspace() {
         <section className="writing-room">
           {error && <div className="workspace-error" role="status">{error}<button onClick={() => setError("")}>Dismiss</button></div>}
           {currentScene ? <>
-            <div className="editor-topline"><div><span className="editor-label">SCENE EDITOR</span><span className="editor-separator">·</span><span className="editor-time"><Clock3 size={13} /> Autosave on</span></div><button className="save-now" onClick={() => saveScene(currentScene._id, sceneTitle, draft)} disabled={saving}><Save size={15} /> Save</button></div>
+            <div className="editor-topline"><div><span className="editor-label">SCENE EDITOR</span><span className="editor-separator">·</span><span className="editor-time"><Clock3 size={13} /> Autosave on</span></div><div className="editor-actions"><VersionHistory projectId={projectId} entityType="scene" entityId={currentScene._id} /><button className="save-now" onClick={() => saveScene(currentScene._id, sceneTitle, draft)} disabled={saving}><Save size={15} /> Save</button></div></div>
             <input className="scene-title-input" aria-label="Scene title" value={sceneTitle} maxLength={120} onChange={(e) => { setSceneTitle(e.target.value); setSaveState("Unsaved changes"); if (timer.current) clearTimeout(timer.current); const value = e.target.value; if (currentScene) timer.current = setTimeout(() => saveScene(currentScene._id, value, draft), 800); }} />
             <section className="scene-reference-panel" aria-label="Scene references">
               <div className="scene-reference-group"><strong><UsersRound size={14} /> Characters</strong>

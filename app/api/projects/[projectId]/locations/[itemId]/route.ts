@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { getActiveWriterSession } from "@/lib/auth";
+import { recordVersion } from "@/lib/versioning";
 export const runtime = "nodejs";
 type Context = { params: Promise<{ projectId: string; itemId: string }> };
 export async function PATCH(request: NextRequest, context: Context) {
@@ -12,15 +13,16 @@ export async function PATCH(request: NextRequest, context: Context) {
  if(body.name!==undefined) { const name=typeof body.name==="string"?body.name.trim():""; if(!name||name.length>100) return NextResponse.json({error:"Location name is required (max 100 characters)."},{status:400}); if(await db.collection("locations").findOne({projectId,name,_id:{$ne:new ObjectId(itemId)}})) return NextResponse.json({error:"A location with this name already exists."},{status:409}); update.name=name; }
  for(const key of ["description","details","notes"]) if(body[key]!==undefined) { if(typeof body[key]!=="string"||(body[key] as string).length>3000) return NextResponse.json({error:key+" must be text up to 3000 characters."},{status:400}); update[key]=(body[key] as string).trim(); }
  if(Object.keys(update).length===1) return NextResponse.json({error:"Nothing to update."},{status:400});
+ const before=await db.collection("locations").findOne({_id:new ObjectId(itemId),projectId});
  const item=await db.collection("locations").findOneAndUpdate({_id:new ObjectId(itemId),projectId},{$set:update},{returnDocument:"after"});
- if(!item) return NextResponse.json({error:"Location not found."},{status:404}); return NextResponse.json({...item,_id:item._id.toString()});
+ if(!item) return NextResponse.json({error:"Location not found."},{status:404}); if(before) await recordVersion(db,{projectId,entityType:"location",entityId:itemId,entityName:String(item.name||"location"),actor:session,before,after:item}); return NextResponse.json({...item,_id:item._id.toString()});
  } catch(e) { console.error("Update locations failed:",e); return NextResponse.json({error:"Could not update location."},{status:503}); }
 }
 export async function DELETE(request: NextRequest, context: Context) {
  const session=await getActiveWriterSession(request); if(!session?.userId) return NextResponse.json({error:"Please sign in as a writer."},{status:401});
  try { const {projectId,itemId}=await context.params; if(!ObjectId.isValid(projectId)||!ObjectId.isValid(itemId)) return NextResponse.json({error:"Invalid ID."},{status:400});
  const db=await getDb(); if(!await db.collection("projects").findOne({_id:new ObjectId(projectId)},{projection:{_id:1}})) return NextResponse.json({error:"Project not found."},{status:404});
- const result=await db.collection("locations").deleteOne({_id:new ObjectId(itemId),projectId}); if(!result.deletedCount) return NextResponse.json({error:"Location not found."},{status:404});
+ const deleted=await db.collection("locations").findOne({_id:new ObjectId(itemId),projectId}); if(!deleted) return NextResponse.json({error:"Location not found."},{status:404}); const result=await db.collection("locations").deleteOne({_id:new ObjectId(itemId),projectId}); if(!result.deletedCount) return NextResponse.json({error:"Location not found."},{status:404}); await recordVersion(db,{projectId,entityType:"location",entityId:itemId,entityName:String(deleted.name||"location"),actor:session,before:deleted,after:null,action:"deleted"});
  await db.collection("scenes").updateMany({projectId},[{$set:{locationIds:{$filter:{input:{$ifNull:["$locationIds",[]]},as:"referenceId",cond:{$ne:["$referenceId",itemId]}}}}}]); return NextResponse.json({success:true});
  } catch(e) { console.error("Delete locations failed:",e); return NextResponse.json({error:"Could not delete location."},{status:503}); }
 }

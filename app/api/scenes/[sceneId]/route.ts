@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { getActiveWriterSession } from "@/lib/auth";
+import { recordVersion } from "@/lib/versioning";
 
 export const runtime = "nodejs";
 type RouteContext = { params: Promise<{ sceneId: string }> };
@@ -65,6 +66,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       { returnDocument: "after" }
     );
     if (!result) return NextResponse.json({ error: "Scene not found." }, { status: 404 });
+    await recordVersion(db, { projectId: String(existingScene.projectId), entityType: "scene", entityId: sceneId, entityName: String(result.title || existingScene.title || "Untitled scene"), actor: session, before: existingScene, after: result });
     return NextResponse.json({ ...result, _id: result._id.toString() });
   } catch (error) {
     console.error("Save scene failed:", error);
