@@ -129,3 +129,7 @@ h1{font:700 clamp(29px,3.1vw,39px)/1.23 var(--font-display);letter-spacing:-1.7p
 .auth-input-wrap input::placeholder{color:#777}
 .auth-eye{color:#aaa}
 .auth-admin-link{color:#a99bff}
+
+
+/* Phase 1 script export controls */
+.episode-heading-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.episode-export-button{display:grid;place-items:center;flex-shrink:0;width:25px;height:25px;padding:0;border:1px solid transparent;border-radius:6px;background:transparent;color:#918d9f;opacity:.72}.episode-export-button:hover{background:#f0edff;border-color:#e5e0ff;color:#5c4fc5;opacity:1}.export-text-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:0 10px;border:1px solid #e8e4f8;border-radius:8px;background:#f8f6ff;color:#5d50c7;font-size:11px;font-weight:700;white-space:nowrap}.export-text-button:hover{background:#eeeaff;border-color:#dcd5ff}@media(max-width:760px){.export-text-button{padding:0 8px;font-size:10px}.editor-actions{gap:6px}}
