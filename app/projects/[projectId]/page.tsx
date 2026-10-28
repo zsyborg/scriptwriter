@@ -32,6 +32,7 @@ export default function ProjectWorkspace() {
   const [saveState, setSaveState] = useState("All changes saved");
   const [error, setError] = useState("");
   const [exportFormat, setExportFormat] = useState<"txt" | "pdf" | "docx">("txt");
+  const [exportLayout, setExportLayout] = useState<"readable" | "screenplay">("readable");
   const [characters, setCharacters] = useState<LibraryItem[]>([]);
   const [locations, setLocations] = useState<LibraryItem[]>([]);
   const [creatures, setCreatures] = useState<LibraryItem[]>([]);
@@ -140,7 +141,7 @@ export default function ProjectWorkspace() {
 
   async function exportText(scope: "scene" | "episode", id: string) {
     try {
-      const response = await fetch("/api/export?" + scope + "Id=" + encodeURIComponent(id) + "&format=" + exportFormat);
+      const response = await fetch("/api/export?" + scope + "Id=" + encodeURIComponent(id) + "&format=" + exportFormat + "&layout=" + exportLayout);
       if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.error || "Could not export this script."); }
       const blob = await response.blob();
       const disposition = response.headers.get("Content-Disposition") || "";
@@ -191,7 +192,7 @@ export default function ProjectWorkspace() {
         <section className="writing-room">
           {error && <div className="workspace-error" role="status">{error}<button onClick={() => setError("")}>Dismiss</button></div>}
           {currentScene ? <>
-            <div className="editor-topline"><div><span className="editor-label">SCENE EDITOR</span><span className="editor-separator">·</span><span className="editor-time"><Clock3 size={13} /> Autosave on</span></div><div className="editor-actions"><VersionHistory projectId={projectId} entityType="scene" entityId={currentScene._id} /><label className="export-format-control"><span>Format</span><select aria-label="Export format" value={exportFormat} onChange={(event) => setExportFormat(event.target.value as "txt" | "pdf" | "docx")}><option value="txt">TXT</option><option value="pdf">PDF</option><option value="docx">DOCX</option></select></label><button type="button" className="export-text-button" onClick={() => exportText("scene", currentScene._id)}><Download size={15} /> Export Scene</button><button className="save-now" onClick={() => saveScene(currentScene._id, sceneTitle, draft)} disabled={saving}><Save size={15} /> Save</button></div></div>
+            <div className="editor-topline"><div><span className="editor-label">SCENE EDITOR</span><span className="editor-separator">·</span><span className="editor-time"><Clock3 size={13} /> Autosave on</span></div><div className="editor-actions"><VersionHistory projectId={projectId} entityType="scene" entityId={currentScene._id} /><label className="export-format-control"><span>Layout</span><select aria-label="Export layout" value={exportLayout} onChange={(event) => setExportLayout(event.target.value as "readable" | "screenplay")}><option value="readable">Readable</option><option value="screenplay">Screenplay</option></select></label><label className="export-format-control"><span>Format</span><select aria-label="Export format" value={exportFormat} onChange={(event) => setExportFormat(event.target.value as "txt" | "pdf" | "docx")}><option value="txt">TXT</option><option value="pdf">PDF</option><option value="docx">DOCX</option></select></label><button type="button" className="export-text-button" onClick={() => exportText("scene", currentScene._id)}><Download size={15} /> Export Scene</button><button className="save-now" onClick={() => saveScene(currentScene._id, sceneTitle, draft)} disabled={saving}><Save size={15} /> Save</button></div></div>
             <input className="scene-title-input" aria-label="Scene title" value={sceneTitle} maxLength={120} onChange={(e) => { setSceneTitle(e.target.value); setSaveState("Unsaved changes"); if (timer.current) clearTimeout(timer.current); const value = e.target.value; if (currentScene) timer.current = setTimeout(() => saveScene(currentScene._id, value, draft), 800); }} />
             <section className="scene-reference-panel" aria-label="Scene references">
               <div className="scene-reference-group"><strong><UsersRound size={14} /> Characters</strong>
