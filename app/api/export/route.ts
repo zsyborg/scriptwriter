@@ -3,13 +3,13 @@ import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { getActiveWriterSession } from "@/lib/auth";
 import { prepareEpisodeText, prepareSceneText, type ExportLayout } from "@/lib/script-export";
-import { createDocx, createPdf } from "@/lib/export-formats";
+import { createDocx, createPdf, createZip } from "@/lib/export-formats";
 export const runtime = "nodejs";
 function safeFilename(value: unknown, fallback: string): string { const name = typeof value === "string" ? value.trim() : ""; const cleaned = name.normalize("NFKD").replace(/[^\w\s.-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").slice(0, 80); return (cleaned || fallback).replace(/^\.+|\.+$/g, "") + ".txt"; }
 export async function GET(request: NextRequest) {
   const session = await getActiveWriterSession(request); if (!session || session.role !== "writer" || !session.userId) return NextResponse.json({ error: "Please sign in as a writer." }, { status: 401 });
   try {
-    const sceneId = request.nextUrl.searchParams.get("sceneId"); const episodeId = request.nextUrl.searchParams.get("episodeId");
+    const sceneId = request.nextUrl.searchParams.get("sceneId"); const episodeId = request.nextUrl.searchParams.get("episodeId"); const projectExportId = request.nextUrl.searchParams.get("projectId");
     const format = (request.nextUrl.searchParams.get("format") || "txt").toLowerCase();
     const layout = (request.nextUrl.searchParams.get("layout") || "readable").toLowerCase() as ExportLayout;
     const author = (request.nextUrl.searchParams.get("author") || "").slice(0, 120);
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const sceneIds = (request.nextUrl.searchParams.get("sceneIds") || "").split(",").filter((id) => ObjectId.isValid(id));
     if (!["readable", "screenplay"].includes(layout)) return NextResponse.json({ error: "Unsupported script layout." }, { status: 400 });
     if (!["txt", "pdf", "docx"].includes(format)) return NextResponse.json({ error: "Unsupported export format." }, { status: 400 });
-    if (Boolean(sceneId) === Boolean(episodeId)) return NextResponse.json({ error: "Choose one scene or one episode to export." }, { status: 400 });
+    if ([sceneId, episodeId, projectExportId].filter(Boolean).length !== 1) return NextResponse.json({ error: "Choose one scene, episode, or project to export." }, { status: 400 });
     const db = await getDb(); let text: string; let filename: string;
     if (sceneId) {
       if (!ObjectId.isValid(sceneId)) return NextResponse.json({ error: "Invalid scene ID." }, { status: 400 });

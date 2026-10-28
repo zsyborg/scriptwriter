@@ -33,7 +33,7 @@ export default function ProjectWorkspace() {
   const [error, setError] = useState("");
   const [exportFormat, setExportFormat] = useState<"txt" | "pdf" | "docx">("txt");
   const [exportLayout, setExportLayout] = useState<"readable" | "screenplay">("readable");
-  const [selectedExportScenes, setSelectedExportScenes] = useState<string[]>([]);
+  const [selectedExportScenes, setSelectedExportScenes] = useState<string[]>([]);\n  const [selectedExportEpisodes, setSelectedExportEpisodes] = useState<string[]>([]);
   const [exportAuthor, setExportAuthor] = useState("");
   const [exportTitlePage, setExportTitlePage] = useState(true);
   const [exportScenePageBreaks, setExportScenePageBreaks] = useState(false);
@@ -143,7 +143,7 @@ export default function ProjectWorkspace() {
   }
 
 
-  async function exportText(scope: "scene" | "episode", id: string) {
+  async function exportProject() {\n    try {\n      const params = new URLSearchParams({ projectId, format: exportFormat, layout: exportLayout, author: exportAuthor, titlePage: String(exportTitlePage), pageBreaks: "true" });\n      if (selectedExportEpisodes.length) params.set("episodeIds", selectedExportEpisodes.join(","));\n      const response = await fetch("/api/export?" + params.toString());\n      if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.error || "Could not export this project."); }\n      const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = (project?.title || "project").replace(/[^a-z0-9.-]+/gi, "-") + "-export.zip"; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url); setError("");\n    } catch (err) { setError(err instanceof Error ? err.message : "Could not export this project."); }\n  }\n\n  async function exportText(scope: "scene" | "episode", id: string) {
     try {
       const params = new URLSearchParams({ [scope + "Id"]: id, format: exportFormat, layout: exportLayout, author: exportAuthor, titlePage: String(exportTitlePage), pageBreaks: String(exportScenePageBreaks) });
       if (scope === "episode" && selectedExportScenes.length) params.set("sceneIds", selectedExportScenes.join(","));
@@ -178,7 +178,7 @@ export default function ProjectWorkspace() {
       </header>
       <div className="story-layout">
         <aside className="story-outline">
-          <div className="outline-header"><div><span className="outline-kicker">STORY STRUCTURE</span><h1>{project?.title || "Your story"}</h1></div><BookOpen size={19} /></div>
+          <div className="outline-header"><div><span className="outline-kicker">STORY STRUCTURE</span><h1>{project?.title || "Your story"}</h1></div><button type="button" className="project-export-button" onClick={exportProject} title="Export project ZIP" aria-label="Export project ZIP"><Download size={15} /></button></div>\n          <div className="project-export-options"><strong>Project export</strong><span>Select episodes below, or leave all unchecked to export every episode.</span></div>
           <p className="outline-description">{project?.description || "Every scene is another piece of your world."}</p>
           <div className="outline-section-title"><span>EPISODES</span><button aria-label="Add episode" onClick={() => setShowEpisodeInput((value) => !value)}><Plus size={16} /></button></div>
           {showEpisodeInput && <form className="inline-create-form" onSubmit={addEpisode}><input autoFocus value={newEpisodeTitle} onChange={(e) => setNewEpisodeTitle(e.target.value)} placeholder="Episode title" maxLength={120} required /><button type="submit" aria-label="Save episode"><Check size={15} /></button></form>}
@@ -186,7 +186,7 @@ export default function ProjectWorkspace() {
           {episodes.map((episode, index) => {
             const episodeScenes = scenes.filter((scene) => scene.episodeId === episode._id);
             return <div className="episode-group" key={episode._id}>
-              <div className="episode-heading"><span className="episode-number">{String(index + 1).padStart(2, "0")}</span><span className="episode-heading-title">{episode.title}</span><button type="button" className="episode-export-button" title={"Export " + episode.title + " as " + exportFormat.toUpperCase()} aria-label={"Export " + episode.title + " as " + exportFormat.toUpperCase()} onClick={() => exportText("episode", episode._id)}><Download size={13} /></button><ChevronDown size={14} /></div>
+              <div className="episode-heading"><label className="export-scene-check" title="Include this episode in project export"><input type="checkbox" checked={selectedExportEpisodes.includes(episode._id)} onChange={(event) => setSelectedExportEpisodes((current) => event.target.checked ? [...current, episode._id] : current.filter((id) => id !== episode._id))} aria-label={"Include " + episode.title + " in project export"} /></label><span className="episode-number">{String(index + 1).padStart(2, "0")}</span><span className="episode-heading-title">{episode.title}</span><button type="button" className="episode-export-button" title={"Export " + episode.title + " as " + exportFormat.toUpperCase()} aria-label={"Export " + episode.title + " as " + exportFormat.toUpperCase()} onClick={() => exportText("episode", episode._id)}><Download size={13} /></button><ChevronDown size={14} /></div>
               {episodeScenes.map((scene, sceneIndex) => <div className="scene-outline-row" key={scene._id}><label className="export-scene-check" title="Include this scene in episode export"><input type="checkbox" checked={selectedExportScenes.includes(scene._id)} onChange={(event) => setSelectedExportScenes((current) => event.target.checked ? [...current, scene._id] : current.filter((id) => id !== scene._id))} aria-label={"Include " + scene.title + " in episode export"} /></label><button className={`scene-link ${selectedScene === scene._id ? "selected" : ""}`} onClick={() => selectScene(scene)}><span className="scene-bullet" /><span>{scene.title}</span><small>{String(sceneIndex + 1).padStart(2, "0")}</small></button></div>)}
             </div>;
           })}
