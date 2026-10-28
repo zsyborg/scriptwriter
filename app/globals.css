@@ -149,3 +149,72 @@ h1{font:700 clamp(29px,3.1vw,39px)/1.23 var(--font-display);letter-spacing:-1.7p
 
 /* Phase 5 project ZIP export */
 .project-export-button{display:grid;place-items:center;width:30px;height:30px;flex:0 0 30px;border:1px solid #e8e4f8;border-radius:8px;background:#fff;color:#7566df;cursor:pointer}.project-export-options{display:flex;flex-direction:column;gap:4px;padding:10px 12px;margin:10px 0 12px;border:1px solid #eeeaf8;border-radius:10px;background:#fbfaff}.project-export-options strong{font-size:11px;color:#51466f}.project-export-options span{font-size:10px;line-height:1.45;color:#8a849a}.episode-heading .export-scene-check{margin-right:2px}
+
+
+/* Export controls: keep the toolbar orderly and readable in the dark writing room. */
+.story-workspace .editor-topline {
+  align-items: flex-start;
+  gap: 18px;
+}
+.story-workspace .editor-actions {
+  display: grid;
+  grid-template-columns: repeat(4, max-content);
+  align-items: center;
+  justify-content: end;
+  gap: 9px 10px;
+  min-width: 0;
+  max-width: 100%;
+}
+.story-workspace .editor-actions > * {
+  min-width: 0;
+}
+.story-workspace .editor-actions .export-format-control,
+.story-workspace .editor-actions .export-option-check {
+  min-height: 32px;
+}
+.story-workspace .editor-actions .export-format-control select,
+.story-workspace .editor-actions .export-author-input {
+  background: #2b190d;
+  color: #fff4e8;
+  border-color: #70431f;
+  color-scheme: dark;
+}
+.story-workspace .editor-actions .export-format-control select option {
+  background: #2b190d;
+  color: #fff4e8;
+}
+.story-workspace .editor-actions .export-author-input::placeholder {
+  color: #c6a88d;
+}
+.story-workspace .editor-actions .export-format-control > span,
+.story-workspace .editor-actions .export-option-check {
+  color: #d6b99e;
+}
+.story-workspace .editor-actions .export-text-button {
+  background: #3a2415;
+  border-color: #70431f;
+  color: #ffd9b0;
+}
+.story-workspace .editor-actions .export-text-button:hover {
+  background: #503019;
+  border-color: #a9652b;
+}
+@media (max-width: 1100px) {
+  .story-workspace .editor-topline {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .story-workspace .editor-actions {
+    justify-content: start;
+  }
+}
+@media (max-width: 760px) {
+  .story-workspace .editor-actions {
+    grid-template-columns: repeat(2, minmax(0, max-content));
+    justify-content: start;
+    gap: 8px;
+  }
+  .story-workspace .editor-actions .export-format-control select[aria-label="Export layout"] {
+    max-width: 100px;
+  }
+}
