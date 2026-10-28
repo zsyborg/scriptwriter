@@ -33,7 +33,8 @@ export default function ProjectWorkspace() {
   const [error, setError] = useState("");
   const [exportFormat, setExportFormat] = useState<"txt" | "pdf" | "docx">("txt");
   const [exportLayout, setExportLayout] = useState<"readable" | "screenplay">("readable");
-  const [selectedExportScenes, setSelectedExportScenes] = useState<string[]>([]);\n  const [selectedExportEpisodes, setSelectedExportEpisodes] = useState<string[]>([]);
+  const [selectedExportScenes, setSelectedExportScenes] = useState<string[]>([]);
+  const [selectedExportEpisodes, setSelectedExportEpisodes] = useState<string[]>([]);
   const [exportAuthor, setExportAuthor] = useState("");
   const [exportTitlePage, setExportTitlePage] = useState(true);
   const [exportScenePageBreaks, setExportScenePageBreaks] = useState(false);
