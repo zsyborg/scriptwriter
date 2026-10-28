@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       zipFiles.unshift({ name: "combined/" + combinedName + "." + extension, data: format === "pdf" ? createPdf(combinedText) : format === "docx" ? createDocx(combinedText) : combinedText });
       zipFiles.push({ name: "README.txt", data: "Project export: " + projectTitle + "\nFormat: " + format.toUpperCase() + "\nEpisodes included: " + episodes.length + "\nLayout: " + layout + "\n" });
       const archive = createZip(zipFiles);
-      return new NextResponse(archive, { status: 200, headers: { "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="${combinedName}-export.zip"`, "Cache-Control": "no-store" } });
+      return new NextResponse(new Uint8Array(archive), { status: 200, headers: { "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="${combinedName}-export.zip"`, "Cache-Control": "no-store" } });
     } else if (sceneId) {
       if (!ObjectId.isValid(sceneId)) return NextResponse.json({ error: "Invalid scene ID." }, { status: 400 });
       const scene = await db.collection("scenes").findOne({ _id: new ObjectId(sceneId) }); if (!scene) return NextResponse.json({ error: "Scene not found." }, { status: 404 });
@@ -63,8 +63,8 @@ export async function GET(request: NextRequest) {
       text = prepareEpisodeText({ title: String(episode.title || "Untitled episode"), scenes: scenes.map((scene) => ({ title: String(scene.title || "Untitled scene"), content: scene.content, order: typeof scene.order === "number" ? scene.order : 0 })) }, String(project.title || "Untitled story"), layout, { titlePage, author, pageBreaks }); filename = safeFilename(episode.title, "episode");
     }
     const baseName = filename.replace(/\.txt$/i, "");
-    if (format === "pdf") return new NextResponse(createPdf(text), { status: 200, headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${baseName}.pdf"`, "Cache-Control": "no-store" } });
-    if (format === "docx") return new NextResponse(createDocx(text), { status: 200, headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Content-Disposition": `attachment; filename="${baseName}.docx"`, "Cache-Control": "no-store" } });
+    if (format === "pdf") return new NextResponse(new Uint8Array(createPdf(text)), { status: 200, headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${baseName}.pdf"`, "Cache-Control": "no-store" } });
+    if (format === "docx") return new NextResponse(new Uint8Array(createDocx(text)), { status: 200, headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Content-Disposition": `attachment; filename="${baseName}.docx"`, "Cache-Control": "no-store" } });
     return new NextResponse(text, { status: 200, headers: { "Content-Type": "text/plain; charset=utf-8", "Content-Disposition": `attachment; filename="${filename}"`, "Cache-Control": "no-store" } });
   } catch (error) { console.error("Script export failed:", error); return NextResponse.json({ error: "Could not export this script." }, { status: 503 }); }
 }
