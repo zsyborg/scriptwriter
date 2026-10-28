@@ -141,3 +141,7 @@ h1{font:700 clamp(29px,3.1vw,39px)/1.23 var(--font-display);letter-spacing:-1.7p
 
 /* Phase 3 script layout selector */
 .export-format-control select[aria-label="Export layout"]{max-width:112px}@media(max-width:760px){.export-format-control select[aria-label="Export layout"]{max-width:88px}}
+
+
+/* Phase 4 export options and scene selection */
+.scene-outline-row{display:flex;align-items:center;gap:3px}.scene-outline-row .scene-link{flex:1;min-width:0}.export-scene-check{display:grid;place-items:center;flex:0 0 23px}.export-scene-check input,.export-option-check input{accent-color:#7566df}.export-author-input{height:30px;width:90px;min-width:60px;padding:0 7px;border:1px solid #e8e4f8;border-radius:7px;background:#fff;color:#4f4868;font-size:11px}.export-option-check{display:inline-flex;align-items:center;gap:4px;color:#777286;font-size:10px;font-weight:700;white-space:nowrap}.editor-actions{flex-wrap:wrap}@media(max-width:760px){.export-author-input{width:66px}.export-option-check{font-size:9px}}
