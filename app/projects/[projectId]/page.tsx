@@ -33,10 +33,6 @@ export default function ProjectWorkspace() {
   const [error, setError] = useState("");
   const [exportFormat, setExportFormat] = useState<"txt" | "pdf" | "docx">("txt");
   const [exportLayout, setExportLayout] = useState<"readable" | "screenplay">("readable");
-  const [selectedExportScenes, setSelectedExportScenes] = useState<string[]>([]);
-  const [exportAuthor, setExportAuthor] = useState("");
-  const [exportTitlePage, setExportTitlePage] = useState(true);
-  const [exportScenePageBreaks, setExportScenePageBreaks] = useState(false);
   const [characters, setCharacters] = useState<LibraryItem[]>([]);
   const [locations, setLocations] = useState<LibraryItem[]>([]);
   const [creatures, setCreatures] = useState<LibraryItem[]>([]);
@@ -145,9 +141,7 @@ export default function ProjectWorkspace() {
 
   async function exportText(scope: "scene" | "episode", id: string) {
     try {
-      const params = new URLSearchParams({ [scope + "Id"]: id, format: exportFormat, layout: exportLayout, author: exportAuthor, titlePage: String(exportTitlePage), pageBreaks: String(exportScenePageBreaks) });
-      if (scope === "episode" && selectedExportScenes.length) params.set("sceneIds", selectedExportScenes.join(","));
-      const response = await fetch("/api/export?" + params.toString());
+      const response = await fetch("/api/export?" + scope + "Id=" + encodeURIComponent(id) + "&format=" + exportFormat + "&layout=" + exportLayout);
       if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.error || "Could not export this script."); }
       const blob = await response.blob();
       const disposition = response.headers.get("Content-Disposition") || "";
@@ -187,7 +181,7 @@ export default function ProjectWorkspace() {
             const episodeScenes = scenes.filter((scene) => scene.episodeId === episode._id);
             return <div className="episode-group" key={episode._id}>
               <div className="episode-heading"><span className="episode-number">{String(index + 1).padStart(2, "0")}</span><span className="episode-heading-title">{episode.title}</span><button type="button" className="episode-export-button" title={"Export " + episode.title + " as " + exportFormat.toUpperCase()} aria-label={"Export " + episode.title + " as " + exportFormat.toUpperCase()} onClick={() => exportText("episode", episode._id)}><Download size={13} /></button><ChevronDown size={14} /></div>
-              {episodeScenes.map((scene, sceneIndex) => <div className="scene-outline-row" key={scene._id}><label className="export-scene-check" title="Include this scene in episode export"><input type="checkbox" checked={selectedExportScenes.includes(scene._id)} onChange={(event) => setSelectedExportScenes((current) => event.target.checked ? [...current, scene._id] : current.filter((id) => id !== scene._id))} aria-label={"Include " + scene.title + " in episode export"} /></label><button className={`scene-link ${selectedScene === scene._id ? "selected" : ""}`} onClick={() => selectScene(scene)}><span className="scene-bullet" /><span>{scene.title}</span><small>{String(sceneIndex + 1).padStart(2, "0")}</small></button>)}
+              {episodeScenes.map((scene, sceneIndex) => <button key={scene._id} className={`scene-link ${selectedScene === scene._id ? "selected" : ""}`} onClick={() => selectScene(scene)}><span className="scene-bullet" /><span>{scene.title}</span><small>{String(sceneIndex + 1).padStart(2, "0")}</small></button>)}
             </div>;
           })}
           <button className="outline-add-scene" onClick={() => { setSceneTargetEpisodeId((current) => current || episodes[0]?._id || ""); setShowSceneInput((value) => !value); }} disabled={!episodes.length}><Plus size={15} /> Add scene</button>
@@ -198,7 +192,7 @@ export default function ProjectWorkspace() {
         <section className="writing-room">
           {error && <div className="workspace-error" role="status">{error}<button onClick={() => setError("")}>Dismiss</button></div>}
           {currentScene ? <>
-            <div className="editor-topline"><div><span className="editor-label">SCENE EDITOR</span><span className="editor-separator">·</span><span className="editor-time"><Clock3 size={13} /> Autosave on</span></div><div className="editor-actions"><VersionHistory projectId={projectId} entityType="scene" entityId={currentScene._id} /><label className="export-format-control"><span>Layout</span><select aria-label="Export layout" value={exportLayout} onChange={(event) => setExportLayout(event.target.value as "readable" | "screenplay")}><option value="readable">Readable</option><option value="screenplay">Screenplay</option></select></label><label className="export-format-control"><span>Author</span><input className="export-author-input" aria-label="Author name for title page" placeholder="Optional" value={exportAuthor} onChange={(event) => setExportAuthor(event.target.value)} /></label><label className="export-option-check"><input type="checkbox" checked={exportTitlePage} onChange={(event) => setExportTitlePage(event.target.checked)} /> Title page</label><label className="export-option-check"><input type="checkbox" checked={exportScenePageBreaks} onChange={(event) => setExportScenePageBreaks(event.target.checked)} /> Scene page breaks</label><label className="export-format-control"><span>Format</span><select aria-label="Export format" value={exportFormat} onChange={(event) => setExportFormat(event.target.value as "txt" | "pdf" | "docx")}><option value="txt">TXT</option><option value="pdf">PDF</option><option value="docx">DOCX</option></select></label><button type="button" className="export-text-button" onClick={() => exportText("scene", currentScene._id)}><Download size={15} /> Export Scene</button><button className="save-now" onClick={() => saveScene(currentScene._id, sceneTitle, draft)} disabled={saving}><Save size={15} /> Save</button></div></div>
+            <div className="editor-topline"><div><span className="editor-label">SCENE EDITOR</span><span className="editor-separator">·</span><span className="editor-time"><Clock3 size={13} /> Autosave on</span></div><div className="editor-actions"><VersionHistory projectId={projectId} entityType="scene" entityId={currentScene._id} /><label className="export-format-control"><span>Layout</span><select aria-label="Export layout" value={exportLayout} onChange={(event) => setExportLayout(event.target.value as "readable" | "screenplay")}><option value="readable">Readable</option><option value="screenplay">Screenplay</option></select></label><label className="export-format-control"><span>Format</span><select aria-label="Export format" value={exportFormat} onChange={(event) => setExportFormat(event.target.value as "txt" | "pdf" | "docx")}><option value="txt">TXT</option><option value="pdf">PDF</option><option value="docx">DOCX</option></select></label><button type="button" className="export-text-button" onClick={() => exportText("scene", currentScene._id)}><Download size={15} /> Export Scene</button><button className="save-now" onClick={() => saveScene(currentScene._id, sceneTitle, draft)} disabled={saving}><Save size={15} /> Save</button></div></div>
             <input className="scene-title-input" aria-label="Scene title" value={sceneTitle} maxLength={120} onChange={(e) => { setSceneTitle(e.target.value); setSaveState("Unsaved changes"); if (timer.current) clearTimeout(timer.current); const value = e.target.value; if (currentScene) timer.current = setTimeout(() => saveScene(currentScene._id, value, draft), 800); }} />
             <section className="scene-reference-panel" aria-label="Scene references">
               <div className="scene-reference-group"><strong><UsersRound size={14} /> Characters</strong>

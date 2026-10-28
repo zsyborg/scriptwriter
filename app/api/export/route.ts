@@ -12,10 +12,6 @@ export async function GET(request: NextRequest) {
     const sceneId = request.nextUrl.searchParams.get("sceneId"); const episodeId = request.nextUrl.searchParams.get("episodeId");
     const format = (request.nextUrl.searchParams.get("format") || "txt").toLowerCase();
     const layout = (request.nextUrl.searchParams.get("layout") || "readable").toLowerCase() as ExportLayout;
-    const author = (request.nextUrl.searchParams.get("author") || "").slice(0, 120);
-    const titlePage = request.nextUrl.searchParams.get("titlePage") !== "false";
-    const pageBreaks = request.nextUrl.searchParams.get("pageBreaks") === "true";
-    const sceneIds = (request.nextUrl.searchParams.get("sceneIds") || "").split(",").filter((id) => ObjectId.isValid(id));
     if (!["readable", "screenplay"].includes(layout)) return NextResponse.json({ error: "Unsupported script layout." }, { status: 400 });
     if (!["txt", "pdf", "docx"].includes(format)) return NextResponse.json({ error: "Unsupported export format." }, { status: 400 });
     if (Boolean(sceneId) === Boolean(episodeId)) return NextResponse.json({ error: "Choose one scene or one episode to export." }, { status: 400 });
@@ -24,16 +20,14 @@ export async function GET(request: NextRequest) {
       if (!ObjectId.isValid(sceneId)) return NextResponse.json({ error: "Invalid scene ID." }, { status: 400 });
       const scene = await db.collection("scenes").findOne({ _id: new ObjectId(sceneId) }); if (!scene) return NextResponse.json({ error: "Scene not found." }, { status: 404 });
       const projectId = String(scene.projectId); if (!ObjectId.isValid(projectId) || !await db.collection("projects").findOne({ _id: new ObjectId(projectId) }, { projection: { _id: 1 } })) return NextResponse.json({ error: "Scene not found." }, { status: 404 });
-      text = prepareSceneText({ title: String(scene.title || "Untitled scene"), content: scene.content }, undefined, layout, { titlePage: false, author, pageBreaks }); filename = safeFilename(scene.title, "scene");
+      text = prepareSceneText({ title: String(scene.title || "Untitled scene"), content: scene.content }, undefined, layout); filename = safeFilename(scene.title, "scene");
     } else {
       if (!episodeId || !ObjectId.isValid(episodeId)) return NextResponse.json({ error: "Invalid episode ID." }, { status: 400 });
       const episode = await db.collection("episodes").findOne({ _id: new ObjectId(episodeId) }); if (!episode) return NextResponse.json({ error: "Episode not found." }, { status: 404 });
       const projectId = String(episode.projectId); if (!ObjectId.isValid(projectId)) return NextResponse.json({ error: "Episode not found." }, { status: 404 });
       const project = await db.collection("projects").findOne({ _id: new ObjectId(projectId) }, { projection: { title: 1, _id: 1 } }); if (!project) return NextResponse.json({ error: "Episode not found." }, { status: 404 });
-      const sceneQuery: Record<string, unknown> = { episodeId: String(episode._id) };
-      if (sceneIds.length) sceneQuery._id = { $in: sceneIds.map((id) => new ObjectId(id)) };
-      const scenes = await db.collection("scenes").find(sceneQuery).sort({ order: 1, createdAt: 1 }).toArray();
-      text = prepareEpisodeText({ title: String(episode.title || "Untitled episode"), scenes: scenes.map((scene) => ({ title: String(scene.title || "Untitled scene"), content: scene.content, order: typeof scene.order === "number" ? scene.order : 0 })) }, String(project.title || "Untitled story"), layout, { titlePage, author, pageBreaks }); filename = safeFilename(episode.title, "episode");
+      const scenes = await db.collection("scenes").find({ episodeId: String(episode._id) }).sort({ order: 1, createdAt: 1 }).toArray();
+      text = prepareEpisodeText({ title: String(episode.title || "Untitled episode"), scenes: scenes.map((scene) => ({ title: String(scene.title || "Untitled scene"), content: scene.content, order: typeof scene.order === "number" ? scene.order : 0 })) }, String(project.title || "Untitled story"), layout); filename = safeFilename(episode.title, "episode");
     }
     const baseName = filename.replace(/\.txt$/i, "");
     if (format === "pdf") return new NextResponse(createPdf(text), { status: 200, headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${baseName}.pdf"`, "Cache-Control": "no-store" } });
