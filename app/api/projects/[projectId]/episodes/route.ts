@@ -23,6 +23,37 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 }
 
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const session = await getActiveWriterSession(request);
+  if (!session || session.role !== "writer" || !session.userId) return NextResponse.json({ error: "Please sign in as a writer." }, { status: 401 });
+  try {
+    const { projectId } = await context.params;
+    if (!ObjectId.isValid(projectId)) return NextResponse.json({ error: "Invalid project ID." }, { status: 400 });
+    const body = await request.json();
+    const episodeIds = body.episodeIds;
+    if (!Array.isArray(episodeIds) || episodeIds.some((id: unknown) => typeof id !== "string" || !ObjectId.isValid(id))) {
+      return NextResponse.json({ error: "A valid ordered list of episode IDs is required." }, { status: 400 });
+    }
+    if (new Set(episodeIds).size !== episodeIds.length) return NextResponse.json({ error: "Episode IDs must not contain duplicates." }, { status: 400 });
+    const db = await getDb();
+    const existingEpisodes = await db.collection("episodes").find({ projectId }).toArray();
+    if (existingEpisodes.length !== episodeIds.length || existingEpisodes.some((episode) => !episodeIds.includes(episode._id.toString()))) {
+      return NextResponse.json({ error: "The episode list changed. Refresh and try again." }, { status: 409 });
+    }
+    const now = new Date();
+    for (const [order, episodeId] of episodeIds.entries()) {
+      await db.collection("episodes").updateOne({ _id: new ObjectId(episodeId), projectId }, { $set: { order, updatedAt: now } });
+    }
+    await db.collection("projects").updateOne({ _id: new ObjectId(projectId) }, { $set: { updatedAt: now } });
+    const episodes = await db.collection("episodes").find({ projectId }).sort({ order: 1, createdAt: 1 }).toArray();
+    return NextResponse.json(episodes.map((episode) => ({ ...episode, _id: episode._id.toString() })));
+  } catch (error) {
+    console.error("Reorder episodes failed:", error);
+    return NextResponse.json({ error: "Could not reorder episodes." }, { status: 503 });
+  }
+}
+
 export async function POST(request: NextRequest, context: RouteContext) {
   const session = await getActiveWriterSession(request);
   if (!session || session.role !== "writer" || !session.userId) return NextResponse.json({ error: "Please sign in as a writer." }, { status: 401 });

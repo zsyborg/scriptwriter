@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, Check, ChevronDown, Clock3, Download, FilePlus2, MapPin, Plus, Save, UsersRound, Sparkles } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, Clock3, Download, FilePlus2, MapPin, Pencil, Plus, Save, Trash2, UsersRound, Sparkles } from "lucide-react";
 import WorldLibrary from "./world-library";
 import SceneContentEditor from "./scene-content-editor";
 import VersionHistory from "./version-history";
@@ -129,6 +129,70 @@ export default function ProjectWorkspace() {
     setError("");
   }
 
+  async function renameEpisode(episode: Episode) {
+    const enteredTitle = window.prompt("Rename episode", episode.title);
+    if (enteredTitle === null) return;
+    const title = enteredTitle.trim();
+    if (!title) { setError("Episode title cannot be empty."); return; }
+    if (title.length > 120) { setError("Episode titles must be 120 characters or fewer."); return; }
+    if (title === episode.title) return;
+    const response = await fetch(`/api/episodes/${episode._id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) { setError(data.error || "Could not rename episode."); return; }
+    setEpisodes((current) => current.map((item) => item._id === episode._id ? { ...item, title: data.title } : item));
+    setError("");
+  }
+
+  async function deleteEpisode(episode: Episode) {
+    if (!window.confirm(`Delete "${episode.title}" and all of its scenes? This cannot be undone.`)) return;
+    const response = await fetch(`/api/episodes/${episode._id}`, { method: "DELETE" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) { setError(data.error || "Could not delete episode."); return; }
+
+    const deletedSceneIds = new Set(scenes.filter((scene) => scene.episodeId === episode._id).map((scene) => scene._id));
+    const remainingScenes = scenes.filter((scene) => scene.episodeId !== episode._id);
+    setEpisodes((current) => current.filter((item) => item._id !== episode._id));
+    setScenes(remainingScenes);
+    setSelectedExportEpisodes((current) => current.filter((id) => id !== episode._id));
+    setSelectedExportScenes((current) => current.filter((id) => !deletedSceneIds.has(id)));
+    if (currentScene && deletedSceneIds.has(currentScene._id)) {
+      const nextScene = remainingScenes[0];
+      if (nextScene) selectScene(nextScene);
+      else { setSelectedScene(""); setDraft(""); setSceneTitle(""); setSaveState("All changes saved"); }
+    }
+    if (sceneTargetEpisodeId === episode._id) {
+      const nextEpisode = episodes.find((item) => item._id !== episode._id);
+      setSceneTargetEpisodeId(nextEpisode?._id || "");
+    }
+    setError("");
+  }
+
+  async function moveEpisode(episodeId: string, direction: -1 | 1) {
+    const currentIndex = episodes.findIndex((episode) => episode._id === episodeId);
+    const targetIndex = currentIndex + direction;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= episodes.length) return;
+    const reordered = [...episodes];
+    [reordered[currentIndex], reordered[targetIndex]] = [reordered[targetIndex], reordered[currentIndex]];
+    setEpisodes(reordered);
+    const response = await fetch(`/api/projects/${projectId}/episodes`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ episodeIds: reordered.map((episode) => episode._id) }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setEpisodes((current) => [...current].sort((a, b) => a.order - b.order));
+      setError(data.error || "Could not reorder episodes.");
+      return;
+    }
+    setEpisodes(data);
+    setError("");
+  }
+
   async function addScene(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const title = newSceneTitle.trim();
@@ -198,7 +262,7 @@ export default function ProjectWorkspace() {
           {episodes.map((episode, index) => {
             const episodeScenes = scenes.filter((scene) => scene.episodeId === episode._id);
             return <div className="episode-group" key={episode._id}>
-              <div className="episode-heading"><label className="export-scene-check" title="Include this episode in project export"><input type="checkbox" checked={selectedExportEpisodes.includes(episode._id)} onChange={(event) => setSelectedExportEpisodes((current) => event.target.checked ? [...current, episode._id] : current.filter((id) => id !== episode._id))} aria-label={"Include " + episode.title + " in project export"} /></label><span className="episode-number">{String(index + 1).padStart(2, "0")}</span><span className="episode-heading-title">{episode.title}</span><button type="button" className="episode-export-button" title={"Export " + episode.title + " as " + exportFormat.toUpperCase()} aria-label={"Export " + episode.title + " as " + exportFormat.toUpperCase()} onClick={() => exportText("episode", episode._id)}><Download size={13} /></button><ChevronDown size={14} /></div>
+              <div className="episode-heading"><label className="export-scene-check" title="Include this episode in project export"><input type="checkbox" checked={selectedExportEpisodes.includes(episode._id)} onChange={(event) => setSelectedExportEpisodes((current) => event.target.checked ? [...current, episode._id] : current.filter((id) => id !== episode._id))} aria-label={"Include " + episode.title + " in project export"} /></label><span className="episode-number">{String(index + 1).padStart(2, "0")}</span><span className="episode-heading-title">{episode.title}</span><div className="episode-management-actions"><button type="button" className="episode-manage-button" disabled={index === 0} title="Move episode up" aria-label={"Move " + episode.title + " up"} onClick={() => moveEpisode(episode._id, -1)}><ArrowUp size={12} /></button><button type="button" className="episode-manage-button" disabled={index === episodes.length - 1} title="Move episode down" aria-label={"Move " + episode.title + " down"} onClick={() => moveEpisode(episode._id, 1)}><ArrowDown size={12} /></button><button type="button" className="episode-manage-button" title="Rename episode" aria-label={"Rename " + episode.title} onClick={() => renameEpisode(episode)}><Pencil size={12} /></button><button type="button" className="episode-manage-button episode-delete-button" title="Delete episode and its scenes" aria-label={"Delete " + episode.title} onClick={() => deleteEpisode(episode)}><Trash2 size={12} /></button></div><button type="button" className="episode-export-button" title={"Export " + episode.title + " as " + exportFormat.toUpperCase()} aria-label={"Export " + episode.title + " as " + exportFormat.toUpperCase()} onClick={() => exportText("episode", episode._id)}><Download size={13} /></button><ChevronDown size={14} /></div>
               {episodeScenes.map((scene, sceneIndex) => <div className="scene-outline-row" key={scene._id}><label className="export-scene-check" title="Include this scene in episode export"><input type="checkbox" checked={selectedExportScenes.includes(scene._id)} onChange={(event) => setSelectedExportScenes((current) => event.target.checked ? [...current, scene._id] : current.filter((id) => id !== scene._id))} aria-label={"Include " + scene.title + " in episode export"} /></label><button className={`scene-link ${selectedScene === scene._id ? "selected" : ""}`} onClick={() => selectScene(scene)}><span className="scene-bullet" /><span>{scene.title}</span><small>{String(sceneIndex + 1).padStart(2, "0")}</small></button></div>)}
             </div>;
           })}
