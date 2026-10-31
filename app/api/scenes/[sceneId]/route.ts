@@ -98,3 +98,28 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Could not save scene." }, { status: 503 });
   }
 }
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  const session = await getActiveWriterSession(request);
+  if (!session || session.role !== "writer" || !session.userId) return NextResponse.json({ error: "Please sign in as a writer." }, { status: 401 });
+  try {
+    const { sceneId } = await context.params;
+    if (!ObjectId.isValid(sceneId)) return NextResponse.json({ error: "Invalid scene ID." }, { status: 400 });
+    const db = await getDb();
+    const scene = await db.collection("scenes").findOne({ _id: new ObjectId(sceneId) });
+    if (!scene) return NextResponse.json({ error: "Scene not found." }, { status: 404 });
+    await db.collection("scenes").deleteOne({ _id: scene._id });
+    const remainingScenes = await db.collection("scenes").find({ episodeId: scene.episodeId }).sort({ order: 1, createdAt: 1 }).toArray();
+    for (const [order, remainingScene] of remainingScenes.entries()) {
+      await db.collection("scenes").updateOne({ _id: remainingScene._id }, { $set: { order, updatedAt: new Date() } });
+    }
+    await db.collection("projects").updateOne(
+      { _id: new ObjectId(scene.projectId) },
+      { $set: { updatedAt: new Date() }, $inc: { sceneCount: -1 } }
+    );
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Delete scene failed:", error);
+    return NextResponse.json({ error: "Could not delete scene." }, { status: 503 });
+  }
+}

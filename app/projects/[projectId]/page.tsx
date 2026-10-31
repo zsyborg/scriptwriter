@@ -193,6 +193,75 @@ export default function ProjectWorkspace() {
     setError("");
   }
 
+  async function renameScene(scene: Scene) {
+    const enteredTitle = window.prompt("Rename scene", scene.title);
+    if (enteredTitle === null) return;
+    const title = enteredTitle.trim();
+    if (!title) { setError("Scene title cannot be empty."); return; }
+    if (title.length > 120) { setError("Scene titles must be 120 characters or fewer."); return; }
+    if (title === scene.title) return;
+    const response = await fetch(`/api/scenes/${scene._id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) { setError(data.error || "Could not rename scene."); return; }
+    setScenes((current) => current.map((item) => item._id === scene._id ? { ...item, title: data.title } : item));
+    if (selectedScene === scene._id) setSceneTitle(data.title);
+    setError("");
+  }
+
+  async function deleteScene(scene: Scene) {
+    if (!window.confirm(`Delete "${scene.title}"? This cannot be undone.`)) return;
+    if (timer.current) clearTimeout(timer.current);
+    const response = await fetch(`/api/scenes/${scene._id}`, { method: "DELETE" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) { setError(data.error || "Could not delete scene."); return; }
+    const remainingScenes = scenes.filter((item) => item._id !== scene._id);
+    setScenes(remainingScenes);
+    setSelectedExportScenes((current) => current.filter((id) => id !== scene._id));
+    if (selectedScene === scene._id) {
+      const nextScene = remainingScenes.find((item) => item.episodeId === scene.episodeId) || remainingScenes[0];
+      if (nextScene) selectScene(nextScene);
+      else { setSelectedScene(""); setDraft(""); setSceneTitle(""); setSaveState("All changes saved"); }
+    }
+    setError("");
+  }
+
+  async function moveScene(sceneId: string, direction: -1 | 1) {
+    const scene = scenes.find((item) => item._id === sceneId);
+    if (!scene) return;
+    const episodeScenes = scenes.filter((item) => item.episodeId === scene.episodeId).sort((a, b) => a.order - b.order);
+    const currentIndex = episodeScenes.findIndex((item) => item._id === sceneId);
+    const targetIndex = currentIndex + direction;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= episodeScenes.length) return;
+    const reorderedEpisodeScenes = [...episodeScenes];
+    [reorderedEpisodeScenes[currentIndex], reorderedEpisodeScenes[targetIndex]] = [reorderedEpisodeScenes[targetIndex], reorderedEpisodeScenes[currentIndex]];
+    const reordered = [...scenes.filter((item) => item.episodeId !== scene.episodeId), ...reorderedEpisodeScenes];
+    setScenes(reordered);
+    const response = await fetch(`/api/episodes/${scene.episodeId}/scenes`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sceneIds: reorderedEpisodeScenes.map((item) => item._id) }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setScenes((current) => [...current].sort((a, b) => {
+        const episodeOrderA = episodes.find((item) => item._id === a.episodeId)?.order ?? 0;
+        const episodeOrderB = episodes.find((item) => item._id === b.episodeId)?.order ?? 0;
+        return episodeOrderA - episodeOrderB || a.order - b.order;
+      }));
+      setError(data.error || "Could not reorder scenes.");
+      return;
+    }
+    setScenes((current) => current.map((item) => {
+      const updated = data.find((result: Scene) => result._id === item._id);
+      return updated ? { ...item, order: updated.order } : item;
+    }));
+    setError("");
+  }
+
   async function addScene(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const title = newSceneTitle.trim();
@@ -263,7 +332,7 @@ export default function ProjectWorkspace() {
             const episodeScenes = scenes.filter((scene) => scene.episodeId === episode._id);
             return <div className="episode-group" key={episode._id}>
               <div className="episode-heading"><label className="export-scene-check" title="Include this episode in project export"><input type="checkbox" checked={selectedExportEpisodes.includes(episode._id)} onChange={(event) => setSelectedExportEpisodes((current) => event.target.checked ? [...current, episode._id] : current.filter((id) => id !== episode._id))} aria-label={"Include " + episode.title + " in project export"} /></label><span className="episode-number">{String(index + 1).padStart(2, "0")}</span><span className="episode-heading-title">{episode.title}</span><div className="episode-management-actions"><button type="button" className="episode-manage-button" disabled={index === 0} title="Move episode up" aria-label={"Move " + episode.title + " up"} onClick={() => moveEpisode(episode._id, -1)}><ArrowUp size={12} /></button><button type="button" className="episode-manage-button" disabled={index === episodes.length - 1} title="Move episode down" aria-label={"Move " + episode.title + " down"} onClick={() => moveEpisode(episode._id, 1)}><ArrowDown size={12} /></button><button type="button" className="episode-manage-button" title="Rename episode" aria-label={"Rename " + episode.title} onClick={() => renameEpisode(episode)}><Pencil size={12} /></button><button type="button" className="episode-manage-button episode-delete-button" title="Delete episode and its scenes" aria-label={"Delete " + episode.title} onClick={() => deleteEpisode(episode)}><Trash2 size={12} /></button></div><button type="button" className="episode-export-button" title={"Export " + episode.title + " as " + exportFormat.toUpperCase()} aria-label={"Export " + episode.title + " as " + exportFormat.toUpperCase()} onClick={() => exportText("episode", episode._id)}><Download size={13} /></button><ChevronDown size={14} /></div>
-              {episodeScenes.map((scene, sceneIndex) => <div className="scene-outline-row" key={scene._id}><label className="export-scene-check" title="Include this scene in episode export"><input type="checkbox" checked={selectedExportScenes.includes(scene._id)} onChange={(event) => setSelectedExportScenes((current) => event.target.checked ? [...current, scene._id] : current.filter((id) => id !== scene._id))} aria-label={"Include " + scene.title + " in episode export"} /></label><button className={`scene-link ${selectedScene === scene._id ? "selected" : ""}`} onClick={() => selectScene(scene)}><span className="scene-bullet" /><span>{scene.title}</span><small>{String(sceneIndex + 1).padStart(2, "0")}</small></button></div>)}
+              {episodeScenes.map((scene, sceneIndex) => <div className="scene-outline-row" key={scene._id}><label className="export-scene-check" title="Include this scene in episode export"><input type="checkbox" checked={selectedExportScenes.includes(scene._id)} onChange={(event) => setSelectedExportScenes((current) => event.target.checked ? [...current, scene._id] : current.filter((id) => id !== scene._id))} aria-label={"Include " + scene.title + " in episode export"} /></label><button className={`scene-link ${selectedScene === scene._id ? "selected" : ""}`} onClick={() => selectScene(scene)}><span className="scene-bullet" /><span>{scene.title}</span><small>{String(sceneIndex + 1).padStart(2, "0")}</small></button><div className="scene-management-actions"><button type="button" className="episode-manage-button" disabled={sceneIndex === 0} title="Move scene up" aria-label={"Move " + scene.title + " up"} onClick={() => moveScene(scene._id, -1)}><ArrowUp size={11} /></button><button type="button" className="episode-manage-button" disabled={sceneIndex === episodeScenes.length - 1} title="Move scene down" aria-label={"Move " + scene.title + " down"} onClick={() => moveScene(scene._id, 1)}><ArrowDown size={11} /></button><button type="button" className="episode-manage-button" title="Rename scene" aria-label={"Rename " + scene.title} onClick={() => renameScene(scene)}><Pencil size={11} /></button><button type="button" className="episode-manage-button episode-delete-button" title="Delete scene" aria-label={"Delete " + scene.title} onClick={() => deleteScene(scene)}><Trash2 size={11} /></button></div></div>)}
             </div>;
           })}
           <button className="outline-add-scene" onClick={() => { setSceneTargetEpisodeId((current) => current || episodes[0]?._id || ""); setShowSceneInput((value) => !value); }} disabled={!episodes.length}><Plus size={15} /> Add scene</button>
